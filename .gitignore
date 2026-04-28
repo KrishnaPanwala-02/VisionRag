@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+ENV/
+.env/
+.env
+
+# SQLite
+db.sqlite3
+
+# Django
+staticfiles/
+media/
+
+# IDEs
+.vscode/
+.idea/
+
+# Mac
+.DS_Store
+
+# Logs
+*.log
+
+# Chroma DB folders (local vector DBs)
+media/chroma_db/
+
+# uploaded files
+media/uploads/
+
+# node modules
+node_modules/
+
+# Coverage
+htmlcov/
+.coverage
+
+# pip
+pip-wheel-metadata/
+
+# environment
+.env.local
+.env.*.local
+
+# local secrets
+secrets.json
+
+# distribution
+dist/
+build/
+
+# pyenv
+.python-version
