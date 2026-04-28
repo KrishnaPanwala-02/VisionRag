@@ -1,0 +1,206 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Dashboard — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+/* HERO */
+.hero{padding:48px 0 32px;position:relative}
+.hero-eyebrow{font-family:var(--mono);font-size:.85rem;color:var(--blue);
+  letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px}
+.hero-eyebrow::before{content:'';width:24px;height:2px;background:var(--blue);border-radius:2px}
+.hero h1{font-size:52px;font-weight:900;line-height:1.05;letter-spacing:-.03em;margin-bottom:10px}
+.hero h1 .name{
+  background:linear-gradient(135deg,var(--blue),var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--muted);font-size:1.15rem;max-width:500px}
+
+/* Scanning animation next to hero */
+.hero-visual{position:absolute;right:0;top:30px;opacity:.18;pointer-events:none}
+.scan-ring{width:220px;height:220px;border-radius:50%;border:2px solid var(--blue);
+  position:absolute;animation:scan-pulse 3s ease-in-out infinite}
+.scan-ring:nth-child(2){width:160px;height:160px;top:30px;left:30px;border-color:var(--green);animation-delay:.6s}
+.scan-ring:nth-child(3){width:100px;height:100px;top:60px;left:60px;border-color:var(--yellow);animation-delay:1.2s}
+@keyframes scan-pulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.06);opacity:1}}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin:32px 0}
+.stat{cursor:default;transition:all .25s}
+.stat:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(0,0,0,.4)}
+
+/* Color accent top border per stat */
+.stat-1{border-top:3px solid var(--blue)}
+.stat-1 .stat-num{background:linear-gradient(135deg,var(--blue),#74a8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-2{border-top:3px solid var(--green)}
+.stat-2 .stat-num{background:linear-gradient(135deg,var(--green),#6bdb8f);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-3{border-top:3px solid var(--yellow)}
+.stat-3 .stat-num{background:linear-gradient(135deg,var(--yellow),#ffd24a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:1.5rem!important}
+.stat-4{border-top:3px solid var(--red)}
+.stat-4 .stat-num{background:linear-gradient(135deg,var(--green),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+/* QUICK ACTIONS */
+.quick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:36px}
+.qa-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:18px;
+  padding:28px 24px;text-align:center;text-decoration:none;color:var(--text);
+  transition:all .28s;display:block;position:relative;overflow:hidden
+}
+.qa-card::before{
+  content:'';position:absolute;inset:0;opacity:0;transition:opacity .28s;
+  background:linear-gradient(135deg,var(--c1,rgba(66,133,244,.08)),var(--c2,rgba(52,168,83,.06)));
+}
+.qa-card:hover::before{opacity:1}
+.qa-card:hover{transform:translateY(-5px);border-color:var(--c-border,rgba(66,133,244,.4));
+  box-shadow:0 16px 48px rgba(0,0,0,.4)}
+.qa-card.blue{--c1:rgba(66,133,244,.1);--c2:rgba(66,133,244,.04);--c-border:rgba(66,133,244,.45)}
+.qa-card.green{--c1:rgba(52,168,83,.1);--c2:rgba(52,168,83,.04);--c-border:rgba(52,168,83,.45)}
+.qa-card.yellow{--c1:rgba(251,188,4,.1);--c2:rgba(251,188,4,.04);--c-border:rgba(251,188,4,.45)}
+.qa-icon{
+  width:60px;height:60px;border-radius:16px;margin:0 auto 16px;
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  position:relative;z-index:1
+}
+.qa-card.blue .qa-icon{background:rgba(66,133,244,.14);border:1px solid rgba(66,133,244,.3)}
+.qa-card.green .qa-icon{background:rgba(52,168,83,.12);border:1px solid rgba(52,168,83,.28)}
+.qa-card.yellow .qa-icon{background:rgba(251,188,4,.12);border:1px solid rgba(251,188,4,.28)}
+.qa-label{font-size:1.15rem;font-weight:800;margin-bottom:6px;position:relative;z-index:1}
+.qa-sub{font-size:.95rem;color:var(--muted);position:relative;z-index:1}
+
+/* SESSIONS */
+.sessions-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;margin-top:8px}
+.sess-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:18px;
+  padding:22px;transition:all .28s;text-decoration:none;display:block;color:var(--text);
+  position:relative;overflow:hidden
+}
+.sess-card:hover{border-color:rgba(66,133,244,.4);transform:translateY(-4px);box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.sess-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--blue),var(--green));transform:scaleX(0);
+  transform-origin:left;transition:transform .3s}
+.sess-card:hover::before{transform:scaleX(1)}
+.sess-title{font-size:1.05rem;font-weight:700;margin-bottom:7px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sess-msgs{font-family:var(--mono);font-size:.85rem;color:var(--blue);margin-bottom:10px;font-weight:600}
+.sess-tags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.sess-tag{font-family:var(--mono);font-size:.78rem;padding:3px 9px;border-radius:6px;
+  background:var(--s2);border:1px solid var(--border2);color:var(--muted)}
+.sess-time{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+.sess-bar{height:3px;border-radius:2px;
+  background:linear-gradient(90deg,var(--blue),var(--green));
+  margin-top:14px;transition:width .8s ease;max-width:100%}
+
+/* Empty state */
+.empty-box{text-align:center;padding:72px 32px}
+.empty-icon{font-size:56px;margin-bottom:16px;opacity:.25}
+.empty-box h3{font-size:1.3rem;font-weight:800;margin-bottom:8px}
+.empty-box p{color:var(--muted);font-size:1rem;margin-bottom:24px}
+
+@media(max-width:800px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .quick-grid{grid-template-columns:1fr}
+  .hero h1{font-size:36px}
+  .hero-visual{display:none}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero anim-fade-up" style="position:relative">
+    <div class="hero-eyebrow">AI Hardware Intelligence</div>
+    <h1>Hello, <span class="name">{{ user.first_name|default:user.username }}</span> 👋</h1>
+    <p>Your industrial hardware documentation workspace. Upload a component image and its manual to get instant answers.</p>
+    <div class="hero-visual" style="width:220px;height:220px;right:60px;top:10px;display:block">
+      <div class="scan-ring"></div>
+      <div class="scan-ring"></div>
+      <div class="scan-ring"></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat stat-1 anim-fade-up-1">
+      <div class="stat-num" id="sn0">{{ sessions.count }}</div>
+      <div class="stat-label">Total Sessions</div>
+    </div>
+    <div class="stat stat-2 anim-fade-up-2">
+      <div class="stat-num" id="sn1">{{ total_msgs }}</div>
+      <div class="stat-label">Messages Sent</div>
+    </div>
+    <div class="stat stat-3 anim-fade-up-3">
+      <div class="stat-num">{{ user.date_joined|timesince|truncatewords:2 }}</div>
+      <div class="stat-label">Member Since</div>
+    </div>
+    <div class="stat stat-4 anim-fade-up-4">
+      <div class="stat-num">✓</div>
+      <div class="stat-label">Active Today</div>
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="section-title anim-fade-up" style="font-size:1.2rem">Quick Actions</div>
+  <div class="quick-grid">
+    <a href="/app/" class="qa-card blue anim-fade-up-1">
+      <div class="qa-icon">✦</div>
+      <div class="qa-label">New Chat</div>
+      <div class="qa-sub">Start a fresh hardware session</div>
+    </a>
+    <a href="{% url 'history' %}" class="qa-card green anim-fade-up-2">
+      <div class="qa-icon">📋</div>
+      <div class="qa-label">Chat History</div>
+      <div class="qa-sub">View all past sessions</div>
+    </a>
+    <a href="{% url 'profile' %}" class="qa-card yellow anim-fade-up-3">
+      <div class="qa-icon">⚙️</div>
+      <div class="qa-label">Profile Settings</div>
+      <div class="qa-sub">Edit your account</div>
+    </a>
+  </div>
+
+  <!-- RECENT SESSIONS -->
+  <div class="section-title anim-fade-up">
+    Recent Sessions
+    {% if sessions %}
+    <a href="{% url 'history' %}" class="btn btn-ghost btn-sm">View all →</a>
+    {% endif %}
+  </div>
+
+  {% if sessions %}
+  <div class="sessions-grid">
+    {% for s in sessions %}
+    <a href="/app/?session={{ s.session_id }}" class="sess-card scroll-anim">
+      <div class="sess-title">{{ s.title }}</div>
+      <div class="sess-msgs">{{ s.message_count }} message{{ s.message_count|pluralize }}</div>
+      <div class="sess-tags">
+        {% for pdf in s.get_pdfs %}<span class="sess-tag">📄 {{ pdf|truncatechars:16 }}</span>{% endfor %}
+        {% for img in s.get_images %}<span class="sess-tag">🖼 {{ img|truncatechars:14 }}</span>{% endfor %}
+      </div>
+      <div class="sess-time">{{ s.updated_at|timesince }} ago</div>
+      <div class="sess-bar" style="width:{% widthratio s.message_count 20 100 %}%"></div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="empty-box">
+      <div class="empty-icon">💬</div>
+      <h3>No sessions yet</h3>
+      <p>Upload a hardware component image and its datasheet PDF to get started</p>
+      <a href="/app/" class="btn btn-primary btn-lg">Start First Chat →</a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+// Count-up for stat numbers
+[['sn0',{{ sessions.count }}],['sn1',{{ total_msgs }}]].forEach(([id,target])=>{
+  const el=document.getElementById(id);
+  if(!el||!target)return;
+  let cur=0;const step=Math.ceil(target/30);
+  const t=setInterval(()=>{cur=Math.min(cur+step,target);el.textContent=cur;if(cur>=target)clearInterval(t);},40);
+});
+</script>
+{% endblock %}

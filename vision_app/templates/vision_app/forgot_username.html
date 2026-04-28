@@ -1,0 +1,105 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Forgot Username — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.auth-wrap{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
+.auth-left{background:var(--s1);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  padding:3rem 3.5rem;position:relative;overflow:hidden}
+.auth-left::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 30% 50%,rgba(251,188,4,.12),transparent 60%)}
+.orb{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;opacity:.2}
+.orb1{width:220px;height:220px;background:var(--yellow);top:8%;left:8%;animation:glow 4s infinite}
+.orb2{width:160px;height:160px;background:var(--blue);bottom:12%;right:12%;animation:glow 4s 2s infinite}
+@keyframes glow{0%,100%{transform:scale(1);opacity:.2}50%{transform:scale(1.12);opacity:.32}}
+.brand-block{position:relative;text-align:center;margin-bottom:2rem}
+.brand-icon{font-size:3.5rem;margin-bottom:.75rem;display:block}
+.brand-title{font-size:2.8rem;font-weight:900;line-height:1;
+  background:linear-gradient(135deg,var(--yellow),var(--blue));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.brand-sub{color:var(--muted);font-size:1rem;margin-top:.6rem;max-width:300px;line-height:1.6}
+.info-cards{display:flex;flex-direction:column;gap:.75rem;width:100%;max-width:360px}
+.info-card{display:flex;align-items:center;gap:.9rem;padding:.9rem 1.1rem;
+  background:rgba(13,13,20,.7);border:1px solid var(--border);border-radius:12px;font-size:.95rem;font-weight:500}
+.info-icon{font-size:1.3rem;flex-shrink:0}
+.auth-right{display:flex;align-items:center;justify-content:center;padding:3rem}
+.auth-box{width:100%;max-width:420px}
+.auth-box h2{font-size:2rem;font-weight:900;margin-bottom:.35rem;letter-spacing:-.02em}
+.auth-box .sub{color:var(--muted);font-size:.95rem;margin-bottom:2rem;line-height:1.6}
+.auth-box .sub a{color:var(--blue);text-decoration:none;font-weight:700}
+.auth-box .sub a:hover{text-decoration:underline}
+.submit-btn{width:100%;justify-content:center;padding:.95rem;font-size:1.05rem;margin-top:.5rem}
+.success-box{text-align:center;padding:1.5rem 0}
+.success-icon{font-size:4rem;display:block;margin-bottom:1rem;animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.success-box h3{font-size:1.5rem;font-weight:800;margin-bottom:.6rem}
+.success-box p{color:var(--muted);font-size:1rem;line-height:1.7;margin-bottom:1.5rem}
+.hint-box{background:rgba(251,188,4,.07);border:1px solid rgba(251,188,4,.22);
+  border-radius:12px;padding:1rem 1.2rem;margin-top:1rem;font-size:.9rem;
+  color:var(--yellow);line-height:1.6}
+@media(max-width:800px){.auth-wrap{grid-template-columns:1fr}.auth-left{display:none}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-left">
+    <div class="orb orb1"></div><div class="orb orb2"></div>
+    <div class="brand-block anim-fade-up">
+      <span class="brand-icon">🔮</span>
+      <div class="brand-title">VisionRAG</div>
+      <p class="brand-sub">We'll look up your username using your email address</p>
+    </div>
+    <div class="info-cards anim-fade-up-1">
+      <div class="info-card"><span class="info-icon">📧</span><span>Enter the email you registered with</span></div>
+      <div class="info-card"><span class="info-icon">📬</span><span>Your username will be sent to that inbox</span></div>
+      <div class="info-card"><span class="info-icon">🔐</span><span>Then use "Forgot Password" if needed too</span></div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-box anim-fade-up">
+
+      {% if sent %}
+      <div class="success-box">
+        <span class="success-icon">📬</span>
+        <h3>Email sent!</h3>
+        <p>If an account with that email exists, your username has been sent to your inbox. Check your spam folder too.</p>
+        <a href="{% url 'login' %}" class="btn btn-primary" style="width:100%;justify-content:center;padding:.95rem">
+          ← Go to Sign In
+        </a>
+        <div class="hint-box">
+          💡 Once you have your username, use <a href="{% url 'forgot_password' %}" style="color:var(--yellow);font-weight:700">Forgot Password</a> if you've also forgotten your password.
+        </div>
+      </div>
+
+      {% else %}
+      <h2>Forgot username?</h2>
+      <p class="sub">Enter your registered email and we'll send your username. Remembered it? <a href="{% url 'login' %}">Sign in →</a></p>
+
+      {% if error %}<div class="alert alert-error">⚠ {{ error }}</div>{% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input class="form-input" type="email" name="email"
+                 placeholder="you@gmail.com" autofocus required autocomplete="email">
+          <div style="font-size:.88rem;color:var(--muted);margin-top:.5rem">
+            Must match the email you used when creating your account.
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary submit-btn">
+          Send My Username →
+        </button>
+      </form>
+
+      <div style="text-align:center;margin-top:1.5rem;display:flex;gap:1.5rem;justify-content:center">
+        <a href="{% url 'login' %}" style="color:var(--muted);font-size:.9rem;text-decoration:none">← Sign In</a>
+        <a href="{% url 'forgot_password' %}" style="color:var(--muted);font-size:.9rem;text-decoration:none">Forgot Password →</a>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+# Core
+django>=4.2
+requests>=2.31
+
+# PDF processing
+PyPDF2>=3.0
+
+# Image processing
+Pillow>=10.0
+opencv-python-headless>=4.9
+numpy>=1.24
+
+# Production server (replaces Django dev server)
+gunicorn>=21.0
+
+# Optional: better RAG quality (not required)
+sentence-transformers>=2.2   # for cross-encoder reranking
+langchain-chroma>=0.1        # for semantic search
+langchain-huggingface>=0.0.1
+chromadb>=0.4
+reportlab
+google-genai

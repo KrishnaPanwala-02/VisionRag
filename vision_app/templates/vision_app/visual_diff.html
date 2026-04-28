@@ -1,0 +1,188 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Visual Diff — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.vd-page{max-width:1000px;margin:0 auto;padding:2rem 2rem 4rem}
+.page-header{margin-bottom:2rem}
+.page-header h1{font-size:2rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.3rem}
+.page-header p{color:var(--muted);font-size:1rem}
+
+.upload-row{display:grid;grid-template-columns:1fr 40px 1fr;gap:1rem;align-items:center;margin-bottom:1.5rem}
+.vs-badge{text-align:center;font-size:1.2rem;font-weight:900;color:var(--muted)}
+.upload-box{background:var(--s1);border:2px dashed var(--border);border-radius:16px;
+  padding:1.5rem;text-align:center;cursor:pointer;transition:all .2s;position:relative;min-height:180px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem}
+.upload-box:hover,.upload-box.over{border-color:var(--blue);background:rgba(66,133,244,.05)}
+.upload-box.has-file{border-style:solid;border-color:var(--green)}
+.upload-box input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.preview-img{width:100%;max-height:140px;object-fit:contain;border-radius:8px;display:none}
+.preview-img.show{display:block}
+.upload-label{font-size:.9rem;font-weight:700}
+.upload-hint{font-size:.8rem;color:var(--muted)}
+
+.run-btn{width:100%;padding:.95rem;font-size:1.05rem;font-weight:800;border:none;border-radius:14px;
+  background:linear-gradient(135deg,var(--blue),var(--green));color:#fff;cursor:pointer;
+  transition:all .2s;margin-bottom:2rem}
+.run-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 28px rgba(66,133,244,.4)}
+.run-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.status-bar{background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:.85rem 1.2rem;margin-bottom:1.5rem;display:none;align-items:center;gap:.75rem;font-size:.95rem}
+.status-bar.show{display:flex}
+.status-spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.results{display:none}
+.results.show{display:block;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.component-banner{background:linear-gradient(135deg,var(--blue),var(--green));
+  border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;color:#fff}
+.component-banner .cb-label{font-size:.8rem;opacity:.8;margin-bottom:.25rem}
+.component-banner .cb-name{font-size:1.5rem;font-weight:900}
+.component-banner .cb-summary{font-size:.93rem;opacity:.9;margin-top:.35rem}
+
+.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
+.diff-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.diff-card.full{grid-column:1/-1}
+.diff-card-head{padding:.9rem 1.2rem;font-weight:800;font-size:.95rem;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem}
+.diff-card-head.diff{background:rgba(234,67,53,.07);color:var(--red)}
+.diff-card-head.cond{background:rgba(251,188,4,.07);color:var(--yellow)}
+.diff-card-head.rec{background:rgba(52,168,83,.07);color:var(--green)}
+.diff-card-body{padding:1.1rem 1.2rem;font-size:.93rem;line-height:1.8;white-space:pre-wrap}
+
+@media(max-width:700px){.upload-row{grid-template-columns:1fr}.vs-badge{display:none}.diff-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="vd-page">
+  <div class="page-header">
+    <h1>📸 Visual Diff</h1>
+    <p>Upload two images of the same hardware component. Gemini Vision will compare them and identify any differences, damage, or changes.</p>
+  </div>
+
+  <div class="upload-row">
+    <div class="upload-box" id="box1" ondragover="ev(event,'box1')" ondragleave="lv('box1')" ondrop="drop(event,'img1')">
+      <input type="file" id="img1" accept="image/*" onchange="chosen('img1',this)">
+      <img id="prev1" class="preview-img">
+      <span class="upload-label" id="lbl1">📸 Before / Image 1</span>
+      <span class="upload-hint">Drop or click</span>
+    </div>
+    <div class="vs-badge">VS</div>
+    <div class="upload-box" id="box2" ondragover="ev(event,'box2')" ondragleave="lv('box2')" ondrop="drop(event,'img2')">
+      <input type="file" id="img2" accept="image/*" onchange="chosen('img2',this)">
+      <img id="prev2" class="preview-img">
+      <span class="upload-label" id="lbl2">📸 After / Image 2</span>
+      <span class="upload-hint">Drop or click</span>
+    </div>
+  </div>
+
+  <button class="run-btn" id="runBtn" onclick="runDiff()" disabled>📸 Compare Images</button>
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-spinner"></div>
+    <span id="statusMsg">Analyzing...</span>
+  </div>
+
+  <div class="results" id="results">
+    <div class="component-banner" id="compBanner">
+      <div class="cb-label">Component Identified</div>
+      <div class="cb-name" id="compName">—</div>
+      <div class="cb-summary" id="compSummary"></div>
+    </div>
+    <div class="diff-grid">
+      <div class="diff-card full">
+        <div class="diff-card-head diff">⚠️ Differences Found</div>
+        <div class="diff-card-body" id="diffBody"></div>
+      </div>
+      <div class="diff-card">
+        <div class="diff-card-head cond">📊 Condition Assessment</div>
+        <div class="diff-card-body" id="condBody"></div>
+      </div>
+      <div class="diff-card">
+        <div class="diff-card-head rec">✅ Recommendation</div>
+        <div class="diff-card-body" id="recBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let files = {img1: null, img2: null};
+
+function ev(e, id){ e.preventDefault(); document.getElementById(id).classList.add('over'); }
+function lv(id){ document.getElementById(id).classList.remove('over'); }
+function drop(e, inputId){
+  e.preventDefault();
+  const box = inputId === 'img1' ? 'box1' : 'box2';
+  lv(box);
+  const f = e.dataTransfer.files[0];
+  if(!f) return;
+  const dt = new DataTransfer(); dt.items.add(f);
+  const inp = document.getElementById(inputId); inp.files = dt.files;
+  chosen(inputId, inp);
+}
+function chosen(inputId, el){
+  const f = el.files[0]; if(!f) return;
+  files[inputId] = f;
+  const num = inputId === 'img1' ? '1' : '2';
+  document.getElementById('lbl'+num).textContent = '✓ ' + f.name;
+  document.getElementById('box'+num).classList.add('has-file');
+  const prev = document.getElementById('prev'+num);
+  prev.src = URL.createObjectURL(f); prev.classList.add('show');
+  checkReady();
+}
+function checkReady(){
+  document.getElementById('runBtn').disabled = !(files.img1 && files.img2);
+}
+function setStatus(msg){ 
+  const bar = document.getElementById('statusBar');
+  bar.classList.add('show');
+  document.getElementById('statusMsg').textContent = msg;
+}
+function hideStatus(){ document.getElementById('statusBar').classList.remove('show'); }
+
+async function runDiff(){
+  if(!files.img1 || !files.img2) return;
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('results').classList.remove('show');
+  setStatus('Sending images to Gemini Vision...');
+
+  const fd = new FormData();
+  fd.append('image1', files.img1);
+  fd.append('image2', files.img2);
+
+  try {
+    const resp = await fetch('/visual-diff/run/', {method:'POST', body:fd});
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value, {stream:true});
+      const lines = buf.split('\n'); buf = lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue;
+        let evt; try{ evt = JSON.parse(line.slice(6)); }catch{ continue; }
+        if(evt.status === 'loading'){ setStatus(evt.msg); }
+        else if(evt.status === 'done'){
+          hideStatus();
+          document.getElementById('compName').textContent = evt.component || '—';
+          document.getElementById('compSummary').textContent = evt.summary || '';
+          document.getElementById('diffBody').textContent = evt.differences || '—';
+          document.getElementById('condBody').textContent = evt.condition || '—';
+          document.getElementById('recBody').textContent = evt.recommendation || '—';
+          document.getElementById('results').classList.add('show');
+        } else if(evt.status === 'error'){
+          hideStatus();
+          alert('Error: ' + evt.msg);
+        }
+      }
+    }
+  } catch(e){ hideStatus(); alert('Failed: ' + e); }
+  document.getElementById('runBtn').disabled = false;
+}
+</script>
+{% endblock %}

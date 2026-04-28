@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2b6cb0" />
+    </marker>
+    <style>
+      .box{fill:#f7fafc;stroke:#cbd5e1;stroke-width:1.5;rx:10;}
+      .service{fill:#e6f2ff;stroke:#b6d4ff;stroke-width:1.5;}
+      .title{font:700 18px/1.2 'Segoe UI', Roboto, Arial;fill:#0f172a}
+      .label{font:400 13px/1.2 'Segoe UI', Roboto, Arial;fill:#0f172a}
+      .small{font:400 12px/1.2 'Segoe UI', Roboto, Arial;fill:#475569}
+      .arrow{stroke:#2b6cb0;stroke-width:2;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+
+  <!-- Browser / Client -->
+  <g transform="translate(40,40)">
+    <rect class="box" x="0" y="0" width="220" height="90" rx="10"/>
+    <text class="title" x="16" y="28">Browser / Client</text>
+    <text class="small" x="16" y="50">UI (templates, analytics, SSE)</text>
+    <text class="small" x="16" y="66">Canvas charts, SSE consumer</text>
+  </g>
+
+  <!-- Web / Django -->
+  <g transform="translate(320,30)">
+    <rect class="service" x="0" y="0" width="420" height="140" rx="10"/>
+    <text class="title" x="18" y="28">Django App (vision_rag)</text>
+    <text class="label" x="18" y="52">views: analyzer, visual_diff, analytics, reports</text>
+    <text class="small" x="18" y="70">SSE endpoints & StreamingHttpResponse</text>
+    <text class="small" x="18" y="88">Templates, static assets, auth</text>
+    <text class="small" x="18" y="106">settings (TIME_ZONE, USE_TZ)</text>
+  </g>
+
+  <!-- Backend engines -->
+  <g transform="translate(320,190)">
+    <rect class="box" x="0" y="0" width="280" height="120" rx="10"/>
+    <text class="title" x="12" y="28">RAG & LLM Layer</text>
+    <text class="small" x="12" y="50">rag_engine: chunking, retrieval</text>
+    <text class="small" x="12" y="66">llm_router: streaming LLM interface</text>
+    <text class="small" x="12" y="82">image_utils: vision model calls</text>
+  </g>
+
+  <g transform="translate(640,190)">
+    <rect class="box" x="0" y="0" width="220" height="120" rx="10"/>
+    <text class="title" x="12" y="28">Cache & Storage</text>
+    <text class="small" x="12" y="50">SQLite (Django ORM)</text>
+    <text class="small" x="12" y="66">Media files (uploads/, media/)</text>
+    <text class="small" x="12" y="82">Chroma / Vector DB (chroma_db/)</text>
+  </g>
+
+  <!-- External model APIs -->
+  <g transform="translate(320,340)">
+    <rect class="box" x="0" y="0" width="540" height="110" rx="10"/>
+    <text class="title" x="18" y="28">External AI Services</text>
+    <text class="small" x="18" y="52">LLM provider (streaming tokens)</text>
+    <text class="small" x="18" y="70">Vision model / OCR / Embeddings</text>
+    <text class="small" x="18" y="88">(api calls via llm_router / image_utils)</text>
+  </g>
+
+  <!-- Arrows -->
+  <path class="arrow" d="M260 85 L320 85" />
+  <path class="arrow" d="M740 160 L740 190" />
+  <path class="arrow" d="M560 250 L560 300" />
+  <path class="arrow" d="M620 300 L860 300" />
+
+  <!-- Connections: Browser -> Django -->
+  <path class="arrow" d="M260 85 L320 85" />
+  <text class="small" x="280" y="78">HTTP / SSE</text>
+
+  <!-- Django -> RAG/LLM -->
+  <path class="arrow" d="M500 170 L440 210" />
+  <text class="small" x="430" y="150">internal calls</text>
+
+  <!-- RAG -> External AI -->
+  <path class="arrow" d="M420 380 L420 310" />
+  <text class="small" x="380" y="350">API requests (LLM, Vision)</text>
+
+  <!-- Django -> Cache & Storage -->
+  <path class="arrow" d="M760 210 L640 210" />
+  <text class="small" x="700" y="200">DB queries / media read-write</text>
+
+  <!-- Notes -->
+  <rect x="40" y="480" width="1120" height="120" fill="#ffffff" stroke="#e2e8f0" rx="8"/>
+  <text class="small" x="60" y="508">Legend: Browser (UI) ↔ Django (views, SSE) ↔ RAG/LLM (rag_engine, llm_router, image_utils) ↔ Storage (SQLite, media, Chroma) ↔ External AI APIs</text>
+  <text class="small" x="60" y="528">Caching: AnalyzerCache & VisualDiffCache store JSON results keyed by SHA256 of uploads to avoid repeated LLM usage.</text>
+
+</svg>

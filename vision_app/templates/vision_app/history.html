@@ -1,0 +1,151 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Chat History — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.history-header{padding:36px 0 20px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.history-header h1{font-size:32px;font-weight:800}
+.history-header p{color:var(--muted);font-size:15px;margin-top:4px}
+.search-wrap{position:relative;margin-bottom:16px}
+.search-wrap input{
+  width:100%;background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:13px 18px 13px 46px;color:var(--text);
+  font-family:var(--sans);font-size:15px;outline:none;transition:border-color .2s;
+}
+.search-wrap input:focus{border-color:var(--accent)}
+.search-wrap input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px}
+.filter-bar{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.fbtn{
+  font-family:var(--mono);font-size:12px;padding:7px 16px;border-radius:8px;
+  background:var(--s2);border:1px solid var(--border);color:var(--muted);
+  cursor:pointer;transition:all .2s;
+}
+.fbtn:hover,.fbtn.active{border-color:var(--accent);color:var(--accent);background:rgba(124,106,247,.08)}
+table{width:100%;border-collapse:separate;border-spacing:0 6px}
+thead th{
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;
+  padding:8px 16px;text-align:left;
+}
+tbody tr{background:var(--s1);transition:all .2s;cursor:pointer}
+tbody tr:hover{background:var(--s2)}
+tbody td{padding:14px 16px;font-size:15px}
+tbody td:first-child{border-radius:12px 0 0 12px}
+tbody td:last-child{border-radius:0 12px 12px 0}
+.row-title{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;display:block}
+.row-id{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px}
+.tag{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:5px;background:var(--s2);border:1px solid var(--border);color:var(--muted)}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.del-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px;transition:all .2s;font-size:16px}
+.del-btn:hover{color:var(--a4);background:rgba(255,77,109,.1)}
+.time-cell{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.empty-state{text-align:center;padding:80px 32px;color:var(--muted)}
+.empty-state .ei{font-size:52px;opacity:.2;margin-bottom:16px}
+.empty-state h3{font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
+.empty-state p{font-size:15px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="history-header anim-fade-up">
+    <div>
+      <h1>Chat History</h1>
+      <p>{{ sessions.count }} total session{{ sessions.count|pluralize }}</p>
+    </div>
+    <a href="/app/" class="btn btn-primary">✦ New Chat</a>
+  </div>
+
+  <div class="search-wrap anim-fade-up-1">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search sessions by title..." oninput="filterRows()">
+  </div>
+
+  <div class="filter-bar anim-fade-up-2">
+    <button class="fbtn active" onclick="setFilter('all',this)">All</button>
+    <button class="fbtn" onclick="setFilter('pdf',this)">Has PDF</button>
+    <button class="fbtn" onclick="setFilter('img',this)">Has Image</button>
+    <button class="fbtn" onclick="setFilter('active',this)">Active (10+ msgs)</button>
+  </div>
+
+  {% if sessions %}
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead>
+        <tr>
+          <th>Session</th><th>Documents</th><th>Messages</th><th>Last Active</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        {% for s in sessions %}
+        <tr class="srow"
+            data-title="{{ s.title|lower }}"
+            data-pdf="{% if s.get_pdfs %}1{% else %}0{% endif %}"
+            data-img="{% if s.get_images %}1{% else %}0{% endif %}"
+            data-msgs="{{ s.message_count }}"
+            onclick="go('{{ s.session_id }}')">
+          <td>
+            <span class="row-title">{{ s.title }}</span>
+            <span class="row-id">{{ s.session_id|truncatechars:16 }}</span>
+          </td>
+          <td>
+            <div class="tags">
+              {% for pdf in s.get_pdfs %}<span class="tag">📄 {{ pdf|truncatechars:12 }}</span>{% endfor %}
+              {% for img in s.get_images %}<span class="tag">🖼 {{ img|truncatechars:10 }}</span>{% endfor %}
+              {% if not s.get_pdfs and not s.get_images %}<span style="color:var(--muted);font-size:13px">—</span>{% endif %}
+            </div>
+          </td>
+          <td>
+            <span class="badge {% if s.message_count >= 10 %}badge-accent{% else %}badge-success{% endif %}">
+              {{ s.message_count }}
+            </span>
+          </td>
+          <td class="time-cell">{{ s.updated_at|timesince }} ago</td>
+          <td onclick="event.stopPropagation()">
+            <button class="del-btn" onclick="delRow('{{ s.session_id }}',this)" title="Delete session">🗑</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state card anim-fade-up">
+    <div class="ei">📋</div>
+    <h3>No history yet</h3>
+    <p>Your chat sessions will appear here after your first conversation</p>
+    <a href="/app/" class="btn btn-primary" style="margin-top:20px">Start Chatting →</a>
+  </div>
+  {% endif %}
+</div>
+<script>
+let activeF='all';
+function go(sid){window.location='/app/?session='+sid}
+function setFilter(f,btn){
+  activeF=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');filterRows();
+}
+function filterRows(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.srow').forEach(r=>{
+    const okS=!q||r.dataset.title.includes(q);
+    const okF=activeF==='all'||(activeF==='pdf'&&r.dataset.pdf==='1')||(activeF==='img'&&r.dataset.img==='1')||(activeF==='active'&&parseInt(r.dataset.msgs)>=10);
+    r.style.display=okS&&okF?'':'none';
+  });
+}
+async function delRow(sid,btn){
+  if(!confirm('Delete this session and all its messages?'))return;
+  const row=btn.closest('tr');row.style.opacity='.4';
+  const r=await fetch(`/session/${sid}/delete/`,{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'}});
+  if((await r.json()).success){
+    row.style.transition='all .3s';row.style.transform='translateX(40px)';row.style.opacity='0';
+    setTimeout(()=>row.remove(),350);
+  }
+}
+// Animate rows in
+document.querySelectorAll('.srow').forEach((r,i)=>{
+  r.style.opacity='0';r.style.transform='translateY(6px)';
+  setTimeout(()=>{r.style.transition='all .3s';r.style.opacity='1';r.style.transform='none';},i*35+100);
+});
+</script>
+{% endblock %}

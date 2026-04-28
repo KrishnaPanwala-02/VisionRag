@@ -1,0 +1,91 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Reports — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.rp-page{max-width:900px;margin:0 auto;padding:2rem 2rem 4rem}
+.page-header{margin-bottom:2rem}
+.page-header h1{font-size:2rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.3rem}
+.page-header p{color:var(--muted);font-size:1rem}
+
+.sessions-grid{display:flex;flex-direction:column;gap:.85rem}
+.session-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;
+  padding:1.1rem 1.25rem;display:flex;align-items:center;gap:1rem;transition:border-color .2s}
+.session-card:hover{border-color:var(--blue)}
+.sess-icon{font-size:1.6rem;flex-shrink:0}
+.sess-info{flex:1;min-width:0}
+.sess-title{font-weight:800;font-size:1rem;margin-bottom:.2rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sess-meta{font-size:.82rem;color:var(--muted)}
+.sess-actions{display:flex;gap:.6rem;flex-shrink:0}
+.btn-report{padding:.5rem 1rem;border-radius:9px;border:none;cursor:pointer;
+  font-size:.88rem;font-weight:700;background:linear-gradient(135deg,var(--blue),var(--green));
+  color:#fff;transition:all .2s;display:flex;align-items:center;gap:.4rem;text-decoration:none}
+.btn-report:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(66,133,244,.35)}
+.btn-report.loading{opacity:.6;pointer-events:none}
+
+.empty-state{text-align:center;padding:4rem 2rem;color:var(--muted)}
+.empty-icon{font-size:3.5rem;display:block;margin-bottom:1rem}
+
+.info-banner{background:rgba(66,133,244,.07);border:1px solid rgba(66,133,244,.2);
+  border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:.9rem;
+  color:var(--blue);line-height:1.7}
+.info-banner strong{display:block;margin-bottom:.2rem}
+</style>
+{% endblock %}
+{% block content %}
+<div class="rp-page">
+  <div class="page-header">
+    <h1>📝 Auto Report Generator</h1>
+    <p>Generate a professional PDF inspection report from any of your chat sessions — one click download.</p>
+  </div>
+
+  <div class="info-banner">
+    <strong>📋 What's included in each report:</strong>
+    Component name & image · Session overview table · Full chat transcript · Generated timestamp
+  </div>
+
+  {% if sessions %}
+  <div class="sessions-grid">
+    {% for session in sessions %}
+    <div class="session-card">
+      <span class="sess-icon">🖥️</span>
+      <div class="sess-info">
+        <div class="sess-title">{{ session.title|default:"Untitled Session" }}</div>
+        <div class="sess-meta">
+          {{ session.created_at|date:"M d, Y · H:i" }} &nbsp;·&nbsp;
+          {{ session.message_count }} messages
+          {% if session.get_pdfs %}
+            &nbsp;·&nbsp; {{ session.get_pdfs|length }} PDF{% if session.get_pdfs|length != 1 %}s{% endif %}
+          {% endif %}
+        </div>
+      </div>
+      <div class="sess-actions">
+        <a href="{% url 'report_generate' session.session_id %}"
+           class="btn-report" id="dl-{{ session.session_id }}"
+           onclick="startDownload(this)">
+          ⬇ Download PDF Report
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-icon">📭</span>
+    <p>No chat sessions yet. Start a chat session first, then come back here to generate a report.</p>
+    <a href="/app/" class="btn-report" style="display:inline-flex;margin-top:1rem">✦ Start New Chat</a>
+  </div>
+  {% endif %}
+</div>
+<script>
+function startDownload(el){
+  el.classList.add('loading');
+  el.textContent = '⏳ Generating...';
+  // Re-enable after download starts
+  setTimeout(() => {
+    el.classList.remove('loading');
+    el.innerHTML = '⬇ Download PDF Report';
+  }, 4000);
+}
+</script>
+{% endblock %}

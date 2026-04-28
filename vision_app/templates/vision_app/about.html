@@ -1,0 +1,210 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}About — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.about-hero{padding:60px 0 40px;text-align:center;position:relative}
+.about-hero::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:600px;height:300px;
+  background:radial-gradient(ellipse,rgba(124,106,247,.12),transparent 70%);
+  pointer-events:none;
+}
+.about-hero h1{font-size:48px;font-weight:800;line-height:1.1;margin-bottom:16px}
+.about-hero h1 span{background:linear-gradient(135deg,var(--accent),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.about-hero p{color:var(--muted);font-size:18px;max-width:600px;margin:0 auto}
+
+.tech-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:40px 0}
+.tech-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:16px;
+  padding:28px 24px;transition:all .3s;position:relative;overflow:hidden
+}
+.tech-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--accent),var(--a2));
+  transform:scaleX(0);transform-origin:left;transition:transform .3s
+}
+.tech-card:hover{border-color:rgba(124,106,247,.4);transform:translateY(-3px)}
+.tech-card:hover::before{transform:scaleX(1)}
+.tech-num{
+  width:40px;height:40px;border-radius:10px;
+  background:rgba(124,106,247,.12);border:1px solid rgba(124,106,247,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);
+  margin-bottom:16px
+}
+.tech-card h3{font-size:17px;font-weight:700;margin-bottom:8px}
+.tech-card p{color:var(--muted);font-size:14px;line-height:1.65}
+
+.flow-section{margin:48px 0}
+.flow-section h2{font-size:26px;font-weight:800;margin-bottom:8px}
+.flow-section > p{color:var(--muted);font-size:15px;margin-bottom:28px}
+.flow-steps{display:flex;flex-direction:column;gap:0}
+.flow-step{display:flex;gap:24px;align-items:flex-start;padding:24px 0;border-bottom:1px solid var(--border)}
+.flow-step:last-child{border-bottom:none}
+.flow-icon{
+  width:52px;height:52px;border-radius:14px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  background:var(--s2);border:1px solid var(--border)
+}
+.flow-body h4{font-size:16px;font-weight:700;margin-bottom:5px}
+.flow-body p{color:var(--muted);font-size:14px;line-height:1.6}
+.flow-tag{display:inline-block;font-family:var(--mono);font-size:11px;
+  background:rgba(79,209,197,.1);border:1px solid rgba(79,209,197,.25);color:var(--a2);
+  padding:2px 8px;border-radius:5px;margin-top:6px}
+
+.stack-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:28px 0}
+.stack-item{
+  background:var(--s2);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;display:flex;align-items:center;gap:14px
+}
+.stack-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.stack-body{flex:1}
+.stack-name{font-weight:700;font-size:15px;margin-bottom:2px}
+.stack-desc{color:var(--muted);font-size:13px}
+
+.cta-box{
+  text-align:center;padding:56px 40px;margin-top:48px;
+  background:linear-gradient(135deg,rgba(124,106,247,.08),rgba(79,209,197,.05));
+  border:1px solid rgba(124,106,247,.25);border-radius:20px;
+}
+.cta-box h2{font-size:30px;font-weight:800;margin-bottom:12px}
+.cta-box p{color:var(--muted);margin-bottom:28px;font-size:16px}
+.cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+@media(max-width:720px){
+  .tech-grid{grid-template-columns:1fr}
+  .stack-grid{grid-template-columns:1fr}
+  .about-hero h1{font-size:32px}
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page">
+
+  <div class="about-hero anim-fade-up">
+    <h1>What is <span>VisionRAG</span>?</h1>
+    <p>An AI-powered assistant that understands your hardware components from images and answers questions from your own documentation.</p>
+  </div>
+
+  <!-- 3 Core Techniques -->
+  <div class="section-title anim-fade-up" style="font-size:20px;font-weight:800;margin-bottom:20px">
+    3 Advanced RAG Techniques Under the Hood
+  </div>
+  <div class="tech-grid">
+    <div class="tech-card anim-fade-up-1">
+      <div class="tech-num">01</div>
+      <h3>History-Aware Query Rewriting</h3>
+      <p>Before searching, VisionRAG rewrites your question using the conversation history to resolve pronouns like "it" and "that" — so follow-up questions just work.</p>
+    </div>
+    <div class="tech-card anim-fade-up-2">
+      <div class="tech-num">02</div>
+      <h3>Reciprocal Rank Fusion</h3>
+      <p>Two independent searches run simultaneously — keyword (BM25-style) and semantic vector — then fused with RRF. Neither alone is as good as both together.</p>
+    </div>
+    <div class="tech-card anim-fade-up-3">
+      <div class="tech-num">03</div>
+      <h3>Cross-Encoder Reranking</h3>
+      <p>The top-15 candidates from RRF are reranked by a cross-encoder model that reads each (query, chunk) pair together — far more accurate than separate encodings.</p>
+    </div>
+  </div>
+
+  <!-- How it works step by step -->
+  <div class="flow-section anim-fade-up">
+    <h2>How a Query Flows Through VisionRAG</h2>
+    <p>Every question you ask goes through this pipeline automatically:</p>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-icon">📷</div>
+        <div class="flow-body">
+          <h4>1 · Upload a hardware image</h4>
+          <p>Gemini Vision identifies the component — GPU, CPU, RAM, motherboard, etc. — and produces a structured label and description used as image context throughout the chat.</p>
+          <span class="flow-tag">Gemini 2.0 Flash</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">📄</div>
+        <div class="flow-body">
+          <h4>2 · Upload a PDF datasheet (optional)</h4>
+          <p>Text is extracted and pre-chunked into overlapping 300-word windows. In the background, a ChromaDB vector store is built for semantic search. Chat works even before this completes.</p>
+          <span class="flow-tag">PyPDF2 · ChromaDB · HuggingFace Embeddings</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">🔄</div>
+        <div class="flow-body">
+          <h4>3 · Query rewriting</h4>
+          <p>Your question is analysed for pronouns and short phrasing. If ambiguous, the last topic from conversation history is appended so retrieval gets the right context.</p>
+          <span class="flow-tag">Zero-latency Python rewriter</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">🔍</div>
+        <div class="flow-body">
+          <h4>4 · RRF retrieval</h4>
+          <p>Keyword and semantic searches each produce a ranked list. RRF merges them using the formula <code style="color:var(--a2);font-family:var(--mono)">score = Σ 1/(60 + rank)</code> — chunks appearing high in both lists win.</p>
+          <span class="flow-tag">BM25-style · Cosine similarity · RRF k=60</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">🎯</div>
+        <div class="flow-body">
+          <h4>5 · Cross-encoder reranking</h4>
+          <p>Top-12 candidates are re-scored by a cross-encoder that reads the full (question, chunk) pair together. The best 4 chunks go to the prompt.</p>
+          <span class="flow-tag">ms-marco-MiniLM-L-6-v2</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">✨</div>
+        <div class="flow-body">
+          <h4>6 · Answer generation</h4>
+          <p>The final prompt combines image context, retrieved chunks, and recent chat history. The LLM answers from this grounded context only — no hallucinated training knowledge.</p>
+          <span class="flow-tag">Groq · Together AI · OpenRouter · Ollama fallback</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tech stack -->
+  <div class="anim-fade-up">
+    <div class="section-title" style="font-size:20px;font-weight:800;margin-bottom:8px">Technology Stack</div>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:20px">Everything VisionRAG is built on:</p>
+    <div class="stack-grid">
+      <div class="stack-item">
+        <div class="stack-dot" style="background:#3fb950"></div>
+        <div class="stack-body"><div class="stack-name">Django 5</div><div class="stack-desc">Web framework, auth, sessions, ORM</div></div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background:#7c6af7"></div>
+        <div class="stack-body"><div class="stack-name">Gemini 2.0 Flash</div><div class="stack-desc">Vision model for image analysis</div></div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background:#4fd1c5"></div>
+        <div class="stack-body"><div class="stack-name">ChromaDB + LangChain</div><div class="stack-desc">Vector store for semantic retrieval</div></div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background:#f6a623"></div>
+        <div class="stack-body"><div class="stack-name">Groq / Together / OpenRouter</div><div class="stack-desc">Cloud LLM providers (round-robin)</div></div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background:#ff4d6d"></div>
+        <div class="stack-body"><div class="stack-name">sentence-transformers</div><div class="stack-desc">Cross-encoder reranking model</div></div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-dot" style="background:#e8e8f0"></div>
+        <div class="stack-body"><div class="stack-name">Ollama (local fallback)</div><div class="stack-desc">Unlimited local inference, no API key needed</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-box anim-fade-up">
+    <h2>Ready to try it?</h2>
+    <p>Upload a hardware image and a PDF datasheet to get started in under a minute.</p>
+    <div class="cta-btns">
+      <a href="/app/" class="btn btn-primary btn-lg">✦ Start a Chat</a>
+      <a href="{% url 'help' %}" class="btn btn-ghost btn-lg">📖 Read the Guide</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

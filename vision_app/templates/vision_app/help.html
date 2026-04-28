@@ -1,0 +1,319 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Help & FAQ — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.help-hero{padding:52px 0 32px}
+.help-hero h1{font-size:40px;font-weight:800;margin-bottom:8px}
+.help-hero h1 span{background:linear-gradient(135deg,var(--accent),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.help-hero p{color:var(--muted);font-size:16px}
+
+.help-layout{display:grid;grid-template-columns:220px 1fr;gap:32px;margin-top:32px;align-items:start}
+.help-nav{
+  position:sticky;top:90px;background:var(--s1);border:1px solid var(--border);
+  border-radius:14px;padding:16px;list-style:none
+}
+.help-nav li{margin-bottom:2px}
+.help-nav a{
+  display:block;padding:9px 14px;border-radius:8px;text-decoration:none;
+  color:var(--muted);font-size:14px;font-weight:600;transition:all .2s
+}
+.help-nav a:hover{color:var(--text);background:var(--s2)}
+.help-nav a.active{color:var(--accent);background:rgba(124,106,247,.1)}
+.help-nav .nav-section{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--border);padding:10px 14px 4px;
+}
+
+.help-content section{margin-bottom:48px;scroll-margin-top:100px}
+.help-content h2{font-size:22px;font-weight:800;margin-bottom:20px;
+  padding-bottom:12px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px}
+.help-content h2 .ico{
+  width:36px;height:36px;border-radius:10px;background:rgba(124,106,247,.12);
+  border:1px solid rgba(124,106,247,.25);display:flex;align-items:center;
+  justify-content:center;font-size:16px;flex-shrink:0
+}
+
+/* Steps */
+.steps{display:flex;flex-direction:column;gap:16px}
+.step{display:flex;gap:16px;padding:18px 20px;background:var(--s1);border:1px solid var(--border);border-radius:12px}
+.step-n{
+  width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),#5b4fdd);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:13px;font-weight:700;color:#fff
+}
+.step-body h4{font-size:15px;font-weight:700;margin-bottom:4px}
+.step-body p{color:var(--muted);font-size:14px;line-height:1.6}
+
+/* FAQ */
+.faq-list{display:flex;flex-direction:column;gap:8px}
+.faq-item{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.faq-q{
+  width:100%;text-align:left;padding:18px 20px;background:none;border:none;
+  cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;
+  font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)
+}
+.faq-q:hover{color:var(--accent)}
+.faq-arrow{font-size:18px;transition:transform .25s;flex-shrink:0;color:var(--muted)}
+.faq-item.open .faq-arrow{transform:rotate(180deg)}
+.faq-a{
+  max-height:0;overflow:hidden;transition:max-height .3s ease;
+  padding:0 20px;color:var(--muted);font-size:14px;line-height:1.7
+}
+.faq-item.open .faq-a{max-height:400px;padding:0 20px 18px}
+
+/* Tips */
+.tips-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.tip{padding:18px 20px;background:var(--s1);border:1px solid var(--border);border-radius:12px}
+.tip-icon{font-size:22px;margin-bottom:8px}
+.tip h4{font-size:14px;font-weight:700;margin-bottom:5px}
+.tip p{color:var(--muted);font-size:13px;line-height:1.6}
+
+/* Code-style inline hints */
+kbd{
+  background:var(--s2);border:1px solid var(--border);border-radius:5px;
+  padding:2px 7px;font-family:var(--mono);font-size:12px;color:var(--a2)
+}
+
+@media(max-width:820px){
+  .help-layout{grid-template-columns:1fr}
+  .help-nav{position:static;display:flex;flex-wrap:wrap;gap:6px;padding:12px}
+  .help-nav .nav-section{display:none}
+  .help-nav li{margin:0}
+  .tips-grid{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="help-hero anim-fade-up">
+    <h1>Help <span>&amp; FAQ</span></h1>
+    <p>Everything you need to get the most out of VisionRAG</p>
+  </div>
+
+  <div class="help-layout">
+    <!-- Sidebar nav -->
+    <ul class="help-nav anim-fade-up">
+      <li class="nav-section">Getting Started</li>
+      <li><a href="#quickstart" class="active">Quick Start</a></li>
+      <li><a href="#images">Uploading Images</a></li>
+      <li><a href="#pdfs">Uploading PDFs</a></li>
+      <li class="nav-section">Using the App</li>
+      <li><a href="#chatting">Chatting</a></li>
+      <li><a href="#tips">Pro Tips</a></li>
+      <li class="nav-section">Troubleshooting</li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#providers">LLM Providers</a></li>
+    </ul>
+
+    <!-- Main content -->
+    <div class="help-content">
+
+      <section id="quickstart">
+        <h2><span class="ico">🚀</span> Quick Start — 3 Steps</h2>
+        <div class="steps">
+          <div class="step anim-fade-up-1">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <h4>Upload a hardware image</h4>
+              <p>Click the image button in the chat bar and pick a photo of your component — GPU, CPU, RAM, motherboard, monitor, etc. VisionRAG will identify it automatically using Gemini Vision.</p>
+            </div>
+          </div>
+          <div class="step anim-fade-up-2">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <h4>Upload a PDF datasheet (optional but recommended)</h4>
+              <p>Drop in the component's technical specification or manual PDF. VisionRAG will extract, chunk, and index it for retrieval. You can start chatting immediately — indexing continues in the background.</p>
+            </div>
+          </div>
+          <div class="step anim-fade-up-3">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <h4>Ask anything</h4>
+              <p>Type your question naturally. Ask follow-ups using "it", "that", or "the first one" — VisionRAG resolves references from context automatically.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="images">
+        <h2><span class="ico">📷</span> Uploading Images</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">✓</div>
+            <div class="step-body">
+              <h4>Supported formats</h4>
+              <p>JPG, PNG, WebP, GIF, BMP, TIFF. Most phone and camera photos work out of the box.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">✓</div>
+            <div class="step-body">
+              <h4>Blurry images are auto-sharpened</h4>
+              <p>VisionRAG detects blur using Laplacian variance and applies an unsharp-mask sharpening pass before analysis. You'll see <kbd>was_sharpened: true</kbd> in the response when this happens.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">✓</div>
+            <div class="step-body">
+              <h4>You can upload multiple images per session</h4>
+              <p>Each image is identified and added as image context. All identified components are available when answering questions about specs.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pdfs">
+        <h2><span class="ico">📄</span> Uploading PDFs</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">✓</div>
+            <div class="step-body">
+              <h4>What kinds of PDFs work best?</h4>
+              <p>Technical datasheets, user manuals, specification sheets, and white papers. Text-based PDFs work best. Scanned image-only PDFs will have limited text extraction.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">✓</div>
+            <div class="step-body">
+              <h4>Multiple PDFs per session</h4>
+              <p>Upload as many PDFs as you need. Retrieval runs across all of them simultaneously, with each chunk tagged by its source document.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">✓</div>
+            <div class="step-body">
+              <h4>File size limit</h4>
+              <p>Maximum upload size is 50 MB per file. For very large PDFs, consider splitting them into chapters for faster indexing.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="chatting">
+        <h2><span class="ico">💬</span> Chatting Effectively</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">→</div>
+            <div class="step-body">
+              <h4>Ask specific questions</h4>
+              <p>Instead of "tell me about the GPU", try "what is the TDP of the GPU in the image?" Specific questions get more accurate retrievals.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">→</div>
+            <div class="step-body">
+              <h4>Follow-ups work naturally</h4>
+              <p>After asking "what are the power requirements?", you can say "and what about the cooling specifications?" — VisionRAG tracks the topic automatically.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">→</div>
+            <div class="step-body">
+              <h4>Sessions are saved automatically</h4>
+              <p>Every conversation is saved to your <a href="{% url 'history' %}" style="color:var(--accent)">History</a>. You can resume any session from the Dashboard or History page.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tips">
+        <h2><span class="ico">⚡</span> Pro Tips</h2>
+        <div class="tips-grid">
+          <div class="tip">
+            <div class="tip-icon">🖼</div>
+            <h4>Good lighting = better identification</h4>
+            <p>Well-lit, in-focus images with the component label visible help Gemini Vision identify the exact component type and form factor.</p>
+          </div>
+          <div class="tip">
+            <div class="tip-icon">📚</div>
+            <h4>Upload the full datasheet, not just highlights</h4>
+            <p>The full PDF gives the retrieval system more context to find the exact section relevant to your question.</p>
+          </div>
+          <div class="tip">
+            <div class="tip-icon">🔄</div>
+            <h4>Start a new session per component</h4>
+            <p>Mixing components from different sessions can confuse retrieval. One session per hardware component keeps context clean.</p>
+          </div>
+          <div class="tip">
+            <div class="tip-icon">🚀</div>
+            <h4>Check provider status if responses are slow</h4>
+            <p>Visit the Provider Status page to see which LLM is active and if any are rate-limited.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq">
+        <h2><span class="ico">❓</span> Frequently Asked Questions</h2>
+        <div class="faq-list">
+          {% for q, a in faqs %}
+          <div class="faq-item">
+            <button class="faq-q" onclick="toggleFaq(this)">
+              {{ q }}<span class="faq-arrow">⌄</span>
+            </button>
+            <div class="faq-a">{{ a }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section id="providers">
+        <h2><span class="ico">🔌</span> LLM Providers</h2>
+        <p style="color:var(--muted);font-size:14px;margin-bottom:16px">VisionRAG automatically balances across multiple free-tier providers. If one hits its rate limit, the next takes over instantly.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n" style="background:linear-gradient(135deg,#f6a623,#e8931a)">G</div>
+            <div class="step-body">
+              <h4>Groq — Fastest (≈500 tok/s)</h4>
+              <p>6,000 requests/day per API key. Get a key free at <kbd>console.groq.com</kbd> and add it to <kbd>settings.py</kbd> under <kbd>GROQ_API_KEYS</kbd>.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n" style="background:linear-gradient(135deg,#4fd1c5,#2db8ab)">T</div>
+            <div class="step-body">
+              <h4>Together AI — $1 free credit</h4>
+              <p>Roughly 1,000 requests. Add keys to <kbd>TOGETHER_API_KEYS</kbd>.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n" style="background:linear-gradient(135deg,#7a7a9a,#5a5a7a)">O</div>
+            <div class="step-body">
+              <h4>OpenRouter — 200 req/day (free models)</h4>
+              <p>Add keys to <kbd>OPENROUTER_API_KEYS</kbd>. Slower but always available as a backup.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n" style="background:linear-gradient(135deg,#1e1e35,#2a2a4a)">🦙</div>
+            <div class="step-body">
+              <h4>Ollama — Unlimited local fallback</h4>
+              <p>Runs locally on your machine. Start with <kbd>ollama serve</kbd> and pull the model with <kbd>ollama pull llama3.2</kbd>. Used automatically when all cloud providers fail.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleFaq(btn){
+  const item = btn.closest('.faq-item');
+  const wasOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(el=>el.classList.remove('open'));
+  if(!wasOpen) item.classList.add('open');
+}
+
+// Highlight sidebar nav on scroll
+const sections = document.querySelectorAll('.help-content section');
+const links = document.querySelectorAll('.help-nav a');
+window.addEventListener('scroll', ()=>{
+  let cur = '';
+  sections.forEach(s=>{ if(window.scrollY >= s.offsetTop - 120) cur = s.id; });
+  links.forEach(a=>{
+    a.classList.toggle('active', a.getAttribute('href') === '#'+cur);
+  });
+}, {passive:true});
+</script>
+{% endblock %}

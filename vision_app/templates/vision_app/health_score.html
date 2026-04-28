@@ -1,0 +1,283 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Health Score — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.hs-page{max-width:1000px;margin:0 auto;padding:2rem 2rem 4rem}
+.page-header{margin-bottom:2rem}
+.page-header h1{font-size:2rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.3rem}
+.page-header p{color:var(--muted);font-size:1rem}
+
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem}
+.upload-card{background:var(--s1);border:2px dashed var(--border);border-radius:14px;
+  padding:1.5rem;text-align:center;cursor:pointer;transition:all .2s;position:relative;min-height:140px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem}
+.upload-card:hover,.upload-card.over{border-color:var(--blue);background:rgba(66,133,244,.05)}
+.upload-card.has-file{border-style:solid;border-color:var(--green)}
+.upload-card input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-card .prev{width:100%;max-height:100px;object-fit:contain;border-radius:8px;display:none}
+.upload-card .prev.show{display:block}
+.upload-card h3{font-size:.95rem;font-weight:800}
+.upload-card p{font-size:.8rem;color:var(--muted)}
+.opt-badge{font-size:.72rem;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted)}
+
+.run-btn{width:100%;padding:.95rem;font-size:1.05rem;font-weight:800;border:none;border-radius:14px;
+  background:linear-gradient(135deg,#ea4335,#fbbc04,#34a853);color:#fff;cursor:pointer;
+  transition:all .2s;margin-bottom:2rem}
+.run-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 28px rgba(234,67,53,.35)}
+.run-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* Progress steps */
+.progress-steps{display:flex;flex-direction:column;gap:.5rem;margin-bottom:2rem;display:none}
+.progress-steps.show{display:flex}
+.ps{display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;
+  background:var(--s1);border:1px solid var(--border);border-radius:10px;font-size:.9rem;font-weight:600}
+.ps.running{border-color:var(--blue);background:rgba(66,133,244,.06)}
+.ps.done{border-color:var(--green);background:rgba(52,168,83,.06)}
+.ps.error{border-color:var(--red)}
+.ps-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Results */
+.results{display:none}
+.results.show{display:block;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Score Card */
+.score-card{background:var(--s1);border:1px solid var(--border);border-radius:20px;
+  padding:2rem;margin-bottom:1.5rem;text-align:center;position:relative;overflow:hidden}
+.score-card::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);
+  width:280px;height:280px;border-radius:50%;opacity:.06;pointer-events:none}
+.score-card.Excellent::before{background:var(--green)}
+.score-card.Good::before{background:var(--blue)}
+.score-card.Fair::before{background:var(--yellow)}
+.score-card.Warning::before{background:orange}
+.score-card.Critical::before{background:var(--red)}
+
+.component-name{font-size:.85rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+.gauge-wrap{position:relative;width:180px;height:100px;margin:0 auto 1rem;overflow:hidden}
+.gauge-bg{width:180px;height:90px;border-radius:90px 90px 0 0;background:var(--s2);border:3px solid var(--border);border-bottom:none;position:absolute;top:0}
+.gauge-fill{width:180px;height:90px;border-radius:90px 90px 0 0;position:absolute;top:0;
+  transform-origin:bottom center;transform:rotate(0deg);transition:transform 1.2s cubic-bezier(.34,1.1,.64,1)}
+.gauge-fill.Excellent{background:conic-gradient(from 180deg, var(--green) 0deg, transparent 0deg)}
+.gauge-fill.Good{background:conic-gradient(from 180deg, var(--blue) 0deg, transparent 0deg)}
+.gauge-fill.Fair{background:conic-gradient(from 180deg, var(--yellow) 0deg, transparent 0deg)}
+.gauge-fill.Warning{background:conic-gradient(from 180deg, orange 0deg, transparent 0deg)}
+.gauge-fill.Critical{background:conic-gradient(from 180deg, var(--red) 0deg, transparent 0deg)}
+.gauge-center{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:100px;height:50px;border-radius:50px 50px 0 0;background:var(--bg)}
+.score-num{font-size:3.5rem;font-weight:900;letter-spacing:-.04em;margin-bottom:.25rem;line-height:1}
+.score-num.Excellent{color:var(--green)}
+.score-num.Good{color:var(--blue)}
+.score-num.Fair{color:var(--yellow)}
+.score-num.Warning{color:orange}
+.score-num.Critical{color:var(--red)}
+.risk-badge{display:inline-block;padding:.35rem 1.1rem;border-radius:99px;font-size:.88rem;font-weight:800;margin-bottom:.75rem}
+.risk-badge.Excellent{background:rgba(52,168,83,.15);color:var(--green);border:1px solid rgba(52,168,83,.3)}
+.risk-badge.Good{background:rgba(66,133,244,.15);color:var(--blue);border:1px solid rgba(66,133,244,.3)}
+.risk-badge.Fair{background:rgba(251,188,4,.15);color:var(--yellow);border:1px solid rgba(251,188,4,.3)}
+.risk-badge.Warning{background:rgba(255,152,0,.15);color:orange;border:1px solid rgba(255,152,0,.3)}
+.risk-badge.Critical{background:rgba(234,67,53,.15);color:var(--red);border:1px solid rgba(234,67,53,.3)}
+.score-summary{font-size:.95rem;color:var(--muted);line-height:1.7;max-width:560px;margin:0 auto}
+
+/* Detail cards */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.1rem;margin-bottom:1.25rem}
+.detail-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.detail-head{padding:.8rem 1.1rem;font-weight:800;font-size:.9rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem}
+.detail-head.pos{background:rgba(52,168,83,.07);color:var(--green)}
+.detail-head.neg{background:rgba(234,67,53,.07);color:var(--red)}
+.detail-head.rec{background:rgba(66,133,244,.07);color:var(--blue);grid-column:1/-1}
+.detail-body{padding:1rem 1.1rem;font-size:.88rem;line-height:1.8;white-space:pre-wrap;color:var(--text)}
+.rec-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+
+@media(max-width:700px){.upload-grid{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="hs-page">
+  <div class="page-header">
+    <h1>🔥 Hardware Health Score</h1>
+    <p>Upload a hardware image (+ optional PDF manual) and AI will assess its condition — giving a 0–100 health score with risk level and detailed findings.</p>
+  </div>
+
+  <div class="upload-grid">
+    <div class="upload-card" id="imgCard" ondragover="ev(event,'imgCard')" ondragleave="lv('imgCard')" ondrop="drop(event,'imgIn')">
+      <input type="file" id="imgIn" accept="image/*" onchange="fileSet('img',this)">
+      <img class="prev" id="imgPrev">
+      <span style="font-size:2rem">📸</span>
+      <h3 id="imgLbl">Hardware Image</h3>
+      <p>Required · Drop or click</p>
+    </div>
+    <div class="upload-card" id="pdfCard" ondragover="ev(event,'pdfCard')" ondragleave="lv('pdfCard')" ondrop="drop(event,'pdfIn')">
+      <input type="file" id="pdfIn" accept=".pdf" onchange="fileSet('pdf',this)">
+      <span style="font-size:2rem">📄</span>
+      <h3 id="pdfLbl">PDF Manual <span class="opt-badge">Optional</span></h3>
+      <p>Improves accuracy · Drop or click</p>
+    </div>
+  </div>
+
+  <button class="run-btn" id="runBtn" onclick="runHealth()" disabled>🔥 Analyze Health Score</button>
+
+  <div class="progress-steps" id="progressSteps">
+    <div class="ps" id="ps-identify"><span>🤖</span><span>Step 1 — Identify component from image</span><span id="pst-identify" style="margin-left:auto;font-size:.8rem;color:var(--muted)">Waiting</span></div>
+    <div class="ps" id="ps-pdf"><span>📄</span><span>Step 2 — Read PDF specifications</span><span id="pst-pdf" style="margin-left:auto;font-size:.8rem;color:var(--muted)">Waiting</span></div>
+    <div class="ps" id="ps-score"><span>🔥</span><span>Step 3 — Generate health score</span><span id="pst-score" style="margin-left:auto;font-size:.8rem;color:var(--muted)">Waiting</span></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="score-card" id="scoreCard">
+      <div class="component-name" id="compName">—</div>
+      <div class="gauge-wrap">
+        <div class="gauge-bg"></div>
+        <div class="gauge-fill" id="gaugeFill"></div>
+        <div class="gauge-center"></div>
+      </div>
+      <div class="score-num" id="scoreNum">—</div>
+      <div class="risk-badge" id="riskBadge">—</div>
+      <div class="score-summary" id="scoreSummary"></div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-card">
+        <div class="detail-head pos">✅ Positive Indicators</div>
+        <div class="detail-body" id="bodyPos"></div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-head neg">⚠️ Risk Indicators</div>
+        <div class="detail-body" id="bodyRisk"></div>
+      </div>
+      <div class="detail-card" style="grid-column:1/-1">
+        <div class="detail-head rec">💡 Recommendation</div>
+        <div class="detail-body" id="bodyRec"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let imgFile=null, pdfFile=null;
+function ev(e,id){e.preventDefault();document.getElementById(id).classList.add('over')}
+function lv(id){document.getElementById(id).classList.remove('over')}
+function drop(e,inputId){
+  e.preventDefault();
+  const boxId=inputId==='imgIn'?'imgCard':'pdfCard'; lv(boxId);
+  const f=e.dataTransfer.files[0]; if(!f) return;
+  const dt=new DataTransfer(); dt.items.add(f);
+  const inp=document.getElementById(inputId); inp.files=dt.files;
+  fileSet(inputId==='imgIn'?'img':'pdf',inp);
+}
+function fileSet(type,el){
+  const f=el.files[0]; if(!f) return;
+  if(type==='img'){
+    imgFile=f;
+    document.getElementById('imgLbl').textContent='✓ '+f.name;
+    document.getElementById('imgCard').classList.add('has-file');
+    const prev=document.getElementById('imgPrev');
+    prev.src=URL.createObjectURL(f); prev.classList.add('show');
+  } else {
+    pdfFile=f;
+    document.getElementById('pdfLbl').innerHTML='✓ '+f.name;
+    document.getElementById('pdfCard').classList.add('has-file');
+  }
+  document.getElementById('runBtn').disabled=!imgFile;
+}
+
+function setStep(id,state,msg){
+  const el=document.getElementById('ps-'+id);
+  const st=document.getElementById('pst-'+id);
+  if(!el) return;
+  el.className='ps '+state;
+  // Remove old spinner
+  const old=el.querySelector('.ps-spinner'); if(old) old.remove();
+  if(state==='running'){
+    const s=document.createElement('div'); s.className='ps-spinner'; el.appendChild(s);
+    st.textContent=msg||'Running...';
+  } else if(state==='done'){ st.textContent='✓ Done'; }
+  else if(state==='error'){ st.textContent='✗ Error'; }
+}
+
+function animateGauge(score, riskClass){
+  const fill=document.getElementById('gaugeFill');
+  fill.className='gauge-fill '+riskClass;
+  // Score 0-100 maps to 0-180 degrees rotation
+  const deg=(score/100)*180;
+  fill.style.transform='rotate('+deg+'deg)';
+}
+
+async function runHealth(){
+  if(!imgFile) return;
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('progressSteps').classList.add('show');
+  ['identify','pdf','score'].forEach(s=>setStep(s,'','Waiting'));
+
+  const fd=new FormData();
+  fd.append('image',imgFile);
+  if(pdfFile) fd.append('pdf',pdfFile);
+
+  try{
+    const resp=await fetch('/health-score/run/',{method:'POST',body:fd});
+    const reader=resp.body.getReader(); const dec=new TextDecoder(); let buf='';
+    let scoreText='';
+
+    while(true){
+      const{done,value}=await reader.read(); if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split('\n'); buf=lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue;
+        let evt; try{evt=JSON.parse(line.slice(6));}catch{continue;}
+        const{step,status,msg,component,score,risk,summary,positives,risks,recommendation}=evt;
+
+        if(step==='identify'){
+          if(status==='running') setStep('identify','running',msg);
+          if(status==='done'){
+            setStep('identify','done');
+            if(!pdfFile) setStep('pdf','done'); // skip PDF step display
+          }
+        }
+        else if(step==='pdf'){
+          if(status==='running') setStep('pdf','running',msg);
+          if(status==='done') setStep('pdf','done');
+        }
+        else if(step==='score'){
+          if(status==='running') setStep('score','running',msg);
+          if(status==='token') scoreText+=evt.token;
+          if(status==='error') setStep('score','error',msg);
+        }
+        else if(step==='done'){
+          setStep('score','done');
+          // Show results
+          const sc=document.getElementById('scoreCard');
+          sc.className='score-card '+risk;
+          document.getElementById('compName').textContent=component||'Hardware Component';
+          const sn=document.getElementById('scoreNum');
+          sn.className='score-num '+risk;
+          // Animate score count up
+          let cur=0;
+          const target=score;
+          const interval=setInterval(()=>{
+            cur=Math.min(cur+Math.ceil(target/30),target);
+            sn.textContent=cur;
+            if(cur>=target) clearInterval(interval);
+          },30);
+          const rb=document.getElementById('riskBadge');
+          rb.className='risk-badge '+risk;
+          rb.textContent=risk;
+          document.getElementById('scoreSummary').textContent=summary||'';
+          document.getElementById('bodyPos').textContent=positives||'—';
+          document.getElementById('bodyRisk').textContent=risks||'—';
+          document.getElementById('bodyRec').textContent=recommendation||'—';
+          animateGauge(score, risk);
+          document.getElementById('results').classList.add('show');
+        }
+        else if(step==='error'){
+          alert('Error: '+(msg||'Unknown error'));
+        }
+      }
+    }
+  }catch(e){ alert('Failed: '+e); }
+  document.getElementById('runBtn').disabled=false;
+}
+</script>
+{% endblock %}

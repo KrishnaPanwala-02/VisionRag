@@ -1,0 +1,175 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Create Account — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.auth-wrap{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
+.auth-left{background:var(--s1);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  padding:3rem 3.5rem;position:relative;overflow:hidden}
+.auth-left::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 70% 50%,rgba(79,209,197,.15),transparent 60%)}
+.orb{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;opacity:.2}
+.orb1{width:200px;height:200px;background:var(--a2);top:12%;right:8%;animation:glow 4s infinite}
+.orb2{width:150px;height:150px;background:var(--accent);bottom:18%;left:8%;animation:glow 4s 2s infinite}
+.side-content{position:relative;text-align:center;max-width:360px}
+.side-icon{font-size:3rem;margin-bottom:.75rem}
+.side-content h2{font-size:2rem;font-weight:800;margin-bottom:.6rem}
+.side-content p{color:var(--muted);font-size:var(--fs-sm);line-height:1.7}
+.steps-list{display:flex;flex-direction:column;gap:.9rem;margin-top:2rem;width:100%;max-width:340px;position:relative}
+.step-row{display:flex;align-items:flex-start;gap:.85rem;animation:slideRight .5s ease both}
+.step-row:nth-child(2){animation-delay:.1s}.step-row:nth-child(3){animation-delay:.2s}
+.step-num{width:30px;height:30px;border-radius:50%;background:rgba(124,106,247,.15);
+  border:1px solid rgba(124,106,247,.4);display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:.75rem;color:var(--accent);flex-shrink:0;margin-top:2px;font-weight:700}
+.step-body strong{display:block;font-size:var(--fs-sm);font-weight:700;margin-bottom:.15rem}
+.step-body span{font-size:var(--fs-xs);color:var(--muted)}
+.auth-right{display:flex;align-items:center;justify-content:center;padding:3rem}
+.auth-box{width:100%;max-width:440px}
+.auth-box h2{font-size:var(--fs-2xl);font-weight:800;margin-bottom:.35rem}
+.auth-box .sub{color:var(--muted);font-size:var(--fs-sm);margin-bottom:2rem}
+.auth-box .sub a{color:var(--accent);text-decoration:none;font-weight:700}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.submit-btn{width:100%;justify-content:center;padding:.85rem;font-size:var(--fs-md);margin-top:.5rem}
+.pw-rules{font-size:.82rem;margin-top:.5rem;background:var(--s2);border-radius:8px;padding:.65rem .9rem;border:1px solid var(--border)}
+.rule{padding:.15rem 0;color:var(--muted)}.rule.ok{color:var(--green)}.rule.fail{color:var(--red)}
+@media(max-width:800px){.auth-wrap{grid-template-columns:1fr}.auth-left{display:none}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-left">
+    <div class="orb orb1"></div><div class="orb orb2"></div>
+    <div class="side-content anim-fade-up">
+      <div class="side-icon">✨</div>
+      <h2>Get Started Free</h2>
+      <p>Create your account and start analyzing hardware components with AI-powered precision.</p>
+    </div>
+    <div class="steps-list">
+      <div class="step-row"><div class="step-num">1</div><div class="step-body"><strong>Create Account</strong><span>Set up your profile in seconds</span></div></div>
+      <div class="step-row"><div class="step-num">2</div><div class="step-body"><strong>Upload Components</strong><span>Hardware images + PDF documentation</span></div></div>
+      <div class="step-row"><div class="step-num">3</div><div class="step-body"><strong>Chat & Explore</strong><span>Ask anything, get precise answers</span></div></div>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-box anim-fade-up">
+      <h2>Create account</h2>
+      <p class="sub">Already have one? <a href="{% url 'login' %}">Sign in →</a></p>
+      <form method="post" novalidate id="regForm">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Username *</label>
+          <input class="form-input {% if errors.username %}error{% endif %}"
+                 type="text" name="username" value="{{ form_data.username }}"
+                 placeholder="letters, numbers, underscores" autofocus required
+                 autocomplete="username" oninput="validateUsername(this)">
+          {% if errors.username %}<div class="field-error">⚠ {{ errors.username }}</div>{% endif %}
+          <div class="field-error" id="usernameErr" style="display:none"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input class="form-input {% if errors.email %}error{% endif %}"
+                 type="email" name="email" value="{{ form_data.email }}"
+                 placeholder="you@gmail.com" autocomplete="email" required oninput="validateEmail(this)">
+          {% if errors.email %}<div class="field-error">⚠ {{ errors.email }}</div>{% endif %}
+          <div class="field-error" id="emailErr" style="display:none"></div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Password *</label>
+            <div style="position:relative"><input class="form-input {% if errors.password %}error{% endif %}" id="regPw"
+                   type="password" name="password" placeholder="min 8 chars, A-Z, 0-9, @#$..." required
+                   autocomplete="new-password" oninput="validatePw(this)" style="padding-right:40px"><button type="button" onclick="togglePw('regPw',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1">👁</button></div>
+            {% if errors.password %}<div class="field-error">⚠ {{ errors.password }}</div>{% endif %}
+            <div class="field-error" id="pwErr" style="display:none"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm *</label>
+            <div style="position:relative"><input class="form-input {% if errors.password2 %}error{% endif %}" id="regPw2"
+                   type="password" name="password2" placeholder="repeat password" required
+                   autocomplete="new-password" oninput="validatePw2(this)" style="padding-right:40px"><button type="button" onclick="togglePw('regPw2',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1">👁</button></div>
+            {% if errors.password2 %}<div class="field-error">⚠ {{ errors.password2 }}</div>{% endif %}
+            <div class="field-error" id="pw2Err" style="display:none"></div>
+          </div>
+        </div>
+        <div class="pw-rules" id="pwRules">
+          <div id="rule-len"  class="rule">✗ At least 8 characters</div>
+          <div id="rule-upper" class="rule">✗ At least one uppercase letter (A-Z)</div>
+          <div id="rule-lower" class="rule">✗ At least one lowercase letter (a-z)</div>
+          <div id="rule-num"   class="rule">✗ At least one number (0-9)</div>
+          <div id="rule-sym"   class="rule">✗ At least one special character (@#$!%*?&)</div>
+        </div>
+        <button type="submit" class="btn btn-primary submit-btn" id="submitBtn">Create Account →</button>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function validateUsername(el){
+  const v=el.value.trim(),err=document.getElementById('usernameErr');
+  if(!v){showErr(el,err,'');return;}
+  if(v.length<3){showErr(el,err,'At least 3 characters');return;}
+  if(v.length>30){showErr(el,err,'Maximum 30 characters');return;}
+  if(!/^[a-zA-Z0-9_]+$/.test(v)){showErr(el,err,'Only letters, numbers, underscores');return;}
+  if(v.startsWith('_')||v.endsWith('_')){showErr(el,err,'Cannot start or end with _');return;}
+  clearErr(el,err);
+}
+function validateEmail(el){
+  const v=el.value.trim(),err=document.getElementById('emailErr');
+  if(!v){showErr(el,err,'Email address is required');return;}
+  const re=/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  if(!re.test(v)){showErr(el,err,'Enter a valid email (e.g. name@gmail.com)');return;}
+  clearErr(el,err);
+}
+function setRule(id, ok){
+  const el=document.getElementById(id); if(!el)return;
+  el.className='rule '+(ok?'ok':'fail');
+  el.textContent=(ok?'✓ ':'✗ ')+el.textContent.slice(2);
+}
+function validatePw(el){
+  const v=el.value,err=document.getElementById('pwErr');
+  if(!v){showErr(el,err,'');return;}
+  const hasLen   = v.length>=8;
+  const hasUpper = /[A-Z]/.test(v);
+  const hasLower = /[a-z]/.test(v);
+  const hasNum   = /[0-9]/.test(v);
+  const hasSym   = /[@#$!%*?&^()_+\-=\[\]{};':"\|,.<>\/?`~]/.test(v);
+  // Update visual rules
+  setRule('rule-len',   hasLen);
+  setRule('rule-upper', hasUpper);
+  setRule('rule-lower', hasLower);
+  setRule('rule-num',   hasNum);
+  setRule('rule-sym',   hasSym);
+  if(!hasLen){showErr(el,err,'At least 8 characters');return;}
+  if(!hasUpper){showErr(el,err,'Need at least one uppercase letter (A-Z)');return;}
+  if(!hasLower){showErr(el,err,'Need at least one lowercase letter (a-z)');return;}
+  if(!hasNum){showErr(el,err,'Need at least one number (0-9)');return;}
+  if(!hasSym){showErr(el,err,'Need at least one special character (@#$!%*?&)');return;}
+  clearErr(el,err);
+  validatePw2(document.querySelector('[name="password2"]'));
+}
+function validatePw2(el){
+  if(!el)return;
+  const pw=document.querySelector('[name="password"]').value;
+  const err=document.getElementById('pw2Err');
+  if(!el.value){showErr(el,err,'');return;}
+  if(el.value!==pw){showErr(el,err,'Passwords do not match');return;}
+  clearErr(el,err);
+}
+function showErr(el,errEl,msg){
+  el.classList.add('error');el.classList.remove('success-border');
+  if(msg){errEl.textContent='⚠ '+msg;errEl.style.display='flex';}
+}
+function clearErr(el,errEl){
+  el.classList.remove('error');el.classList.add('success-border');
+  errEl.style.display='none';errEl.textContent='';
+}
+
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  if(inp.type === 'password'){ inp.type='text'; btn.textContent='🙈'; }
+  else { inp.type='password'; btn.textContent='👁'; }
+}
+</script>
+
+<script>function togglePw(id,btn){var i=document.getElementById(id);if(!i)return;i.type=i.type==='password'?'text':'password';btn.textContent=i.type==='password'?'👁':'🙈';}</script>
+{% endblock %}

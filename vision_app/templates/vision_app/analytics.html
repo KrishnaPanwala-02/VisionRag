@@ -1,0 +1,338 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Analytics — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.an-page{max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+.page-header{margin-bottom:2rem}
+.page-header h1{font-size:2rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.3rem}
+.page-header p{color:var(--muted);font-size:1rem}
+
+/* Stat cards */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
+.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.4rem}
+.stat-label{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.4rem}
+.stat-val{font-size:2.2rem;font-weight:900;letter-spacing:-.03em;line-height:1}
+.stat-sub{font-size:.8rem;color:var(--muted);margin-top:.25rem}
+.stat-card:nth-child(1) .stat-val{color:var(--blue)}
+.stat-card:nth-child(2) .stat-val{color:var(--green)}
+.stat-card:nth-child(3) .stat-val{color:var(--yellow)}
+.stat-card:nth-child(4) .stat-val{color:var(--red)}
+
+/* Charts grid */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
+.chart-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.25rem}
+.chart-card.full{grid-column:1/-1}
+.chart-title{font-size:.95rem;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+
+/* Bar chart */
+.bar-chart{display:flex;flex-direction:column;gap:.45rem}
+.bar-row{display:flex;align-items:center;gap:.75rem;font-size:.82rem}
+.bar-label{width:90px;text-align:right;color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.bar-wrap{flex:1;background:var(--s2);border-radius:4px;height:20px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width 1s ease;min-width:2px}
+.bar-count{width:30px;text-align:right;color:var(--muted);font-size:.8rem;flex-shrink:0}
+
+/* Line chart (canvas) */
+canvas{width:100%!important}
+
+/* Activity heatmap */
+.hour-chart{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-top:.5rem}
+.hour-cell{height:28px;border-radius:3px;background:var(--s2);transition:background .3s;cursor:default;position:relative}
+.hour-cell:hover::after{content:attr(data-tip);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);
+  background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:3px 7px;font-size:.75rem;
+  white-space:nowrap;z-index:10;pointer-events:none}
+.hour-labels{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-top:3px}
+.hour-lbl{font-size:.6rem;color:var(--muted);text-align:center}
+
+/* Word cloud style topics */
+.topics-wrap{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.5rem 0}
+.topic-tag{padding:.3rem .8rem;border-radius:99px;font-weight:700;border:1px solid;cursor:default}
+
+/* Loading */
+.loading-state{text-align:center;padding:3rem;color:var(--muted)}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* tooltip for charts */
+.chart-tooltip{position:absolute;padding:6px 8px;background:rgba(20,20,30,0.95);color:#fff;border-radius:6px;border:1px solid rgba(255,255,255,0.06);font-size:.78rem;pointer-events:none;transform:translate(-50%,-120%);white-space:nowrap;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+
+@media(max-width:800px){.stat-row{grid-template-columns:1fr 1fr}.charts-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="an-page">
+  <div class="page-header">
+    <h1>📊 Usage Analytics</h1>
+    <p>Your personal VisionRAG usage insights — sessions, messages, components analyzed, and activity patterns.</p>
+  </div>
+
+  <div id="loadingState" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Loading your analytics...</p>
+  </div>
+
+  <div id="analyticsContent" style="display:none">
+    <!-- Stat cards -->
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Sessions</div>
+        <div class="stat-val" id="statSessions">—</div>
+        <div class="stat-sub" id="statSessionsWeek">this week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Messages Sent</div>
+        <div class="stat-val" id="statMsgs">—</div>
+        <div class="stat-sub" id="statMsgsWeek">this week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">PDFs Uploaded</div>
+        <div class="stat-val" id="statPdfs">—</div>
+        <div class="stat-sub">across all sessions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Images Analyzed</div>
+        <div class="stat-val" id="statImgs">—</div>
+        <div class="stat-sub">components identified</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <!-- Messages per day -->
+      <div class="chart-card full">
+        <div class="chart-title">💬 Messages per Day <span style="color:var(--muted);font-weight:400;font-size:.82rem">(last 30 days)</span></div>
+        <div style="position:relative">
+          <canvas id="msgsChart" height="100"></canvas>
+          <div id="msgsTooltip" class="chart-tooltip" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- Top components -->
+      <div class="chart-card">
+        <div class="chart-title">🖥️ Top Components Analyzed</div>
+        <div class="bar-chart" id="compChart"></div>
+      </div>
+
+      <!-- Activity by hour -->
+      <div class="chart-card">
+        <div class="chart-title">⏰ Activity by Hour of Day</div>
+        <div class="hour-chart" id="hourChart"></div>
+        <div class="hour-labels" id="hourLabels"></div>
+      </div>
+
+      <!-- Top topics -->
+      <div class="chart-card full">
+        <div class="chart-title">💡 Most Common Question Topics</div>
+        <div class="topics-wrap" id="topicsWrap"></div>
+      </div>
+    </div>
+
+    <!-- Best day info -->
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;display:flex;gap:2rem;flex-wrap:wrap">
+      <div><div style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem">Most Active Day</div><div style="font-size:1.3rem;font-weight:900" id="bestDay">—</div></div>
+      <div><div style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem">Avg Messages / Session</div><div style="font-size:1.3rem;font-weight:900" id="avgMsgs">—</div></div>
+      <div><div style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem">Total Questions Asked</div><div style="font-size:1.3rem;font-weight:900" id="totalQ">—</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Simple canvas line chart — no external library needed
+function drawLineChart(canvasId, data, color, highlightIndex){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const parent = canvas.parentElement;
+  const W = canvas.offsetWidth || (parent && parent.clientWidth) || 300;
+  const H = 100;
+  canvas.width = W; canvas.height = H;
+
+  const vals = data.map(d => d.count);
+  const max  = Math.max(...vals, 1);
+  const step = W / Math.max((data.length - 1), 1);
+
+  // Grid lines
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border') || '#333';
+  ctx.lineWidth = 0.5;
+  [0.25, 0.5, 0.75, 1].forEach(f => {
+    const y = H - f * H + 5;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  });
+
+  // Area fill
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, color + '55');
+  grad.addColorStop(1, color + '00');
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  data.forEach((d, i) => {
+    const x = i * step;
+    const y = H - (d.count / max) * (H - 15) - 5;
+    i === 0 ? ctx.lineTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(W, H); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Line
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+  data.forEach((d, i) => {
+    const x = i * step;
+    const y = H - (d.count / max) * (H - 15) - 5;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Dots on non-zero
+  data.forEach((d, i) => {
+    if(d.count === 0) return;
+    const x = i * step;
+    const y = H - (d.count / max) * (H - 15) - 5;
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+  });
+
+  // highlight index if provided
+  if(typeof highlightIndex === 'number' && highlightIndex >= 0 && highlightIndex < data.length){
+    const d = data[highlightIndex];
+    const x = highlightIndex * step;
+    const y = H - (d.count / max) * (H - 15) - 5;
+    // outer glow
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2);
+    ctx.fillStyle = color + '33'; ctx.fill();
+    // inner dot
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+  }
+}
+
+function renderBarChart(containerId, items, color){
+  const el = document.getElementById(containerId);
+  if(!el || !items.length){ el.innerHTML='<div style="color:var(--muted);font-size:.88rem;padding:.5rem 0">No data yet</div>'; return; }
+  const max = Math.max(...items.map(i => i.count), 1);
+  el.innerHTML = items.map(item => {
+    const pct = Math.round((item.count / max) * 100);
+    const name = item.name || item.word || '—';
+    return '<div class="bar-row">'
+      + '<div class="bar-label" title="'+name+'">'+name+'</div>'
+      + '<div class="bar-wrap"><div class="bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'
+      + '<div class="bar-count">'+item.count+'</div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderHourChart(data){
+  const el = document.getElementById('hourChart');
+  const lblEl = document.getElementById('hourLabels');
+  if(!el) return;
+  const max = Math.max(...data.map(d => d.count), 1);
+  el.innerHTML = data.map(d => {
+    const pct = d.count / max;
+    const alpha = 0.1 + pct * 0.9;
+    return '<div class="hour-cell" style="background:rgba(66,133,244,'+alpha+')" data-tip="'+d.hour+': '+d.count+' msgs"></div>';
+  }).join('');
+  lblEl.innerHTML = data.filter((_,i)=>i%6===0).map(d=>'<div class="hour-lbl" style="grid-column:span 6">'+d.hour+'</div>').join('');
+}
+
+function renderTopics(topics){
+  const el = document.getElementById('topicsWrap');
+  if(!el || !topics.length){ el.innerHTML='<div style="color:var(--muted);font-size:.88rem">No questions yet</div>'; return; }
+  const max = Math.max(...topics.map(t => t.count), 1);
+  const colors = ['var(--blue)','var(--green)','var(--yellow)','var(--red)','#9c27b0','#ff5722','#00bcd4','#8bc34a'];
+  el.innerHTML = topics.map((t, i) => {
+    const size = 0.78 + (t.count / max) * 0.45;
+    const color = colors[i % colors.length];
+    return '<div class="topic-tag" style="font-size:'+size+'rem;color:'+color+';border-color:'+color+'55;background:'+color+'11">'+t.word+' <span style="opacity:.6;font-size:.8em">×'+t.count+'</span></div>';
+  }).join('');
+}
+
+async function loadAnalytics(){
+  try {
+    const resp = await fetch('/analytics/data/');
+
+    // Basic diagnostics: ensure we got a successful JSON response
+    const contentType = resp.headers.get('content-type') || '';
+    if (!resp.ok) {
+      const txt = await resp.text();
+      document.getElementById('loadingState').innerHTML = '<p style="color:var(--red)">Failed to load analytics: HTTP ' + resp.status + '</p>';
+      console.error('Analytics load failed (status):', resp.status, txt);
+      return;
+    }
+    if (!contentType.includes('application/json')) {
+      const txt = await resp.text();
+      document.getElementById('loadingState').innerHTML = '<p style="color:var(--red)">Failed to load analytics: expected JSON but received HTML — you may be logged out. Open the browser console / Network tab for details.</p>';
+      console.error('Analytics load unexpected content-type:', contentType, txt.slice(0,1000));
+      return;
+    }
+
+    const data = await resp.json();
+    console.log('Analytics data received:', data);
+    const s = data.stats;
+    window._analytics_msgs_data = data.msgs_per_day;
+
+    // Stats
+    document.getElementById('statSessions').textContent = s.total_sessions;
+    document.getElementById('statSessionsWeek').textContent = s.sessions_week + ' this week';
+    document.getElementById('statMsgs').textContent = s.user_messages;
+    document.getElementById('statMsgsWeek').textContent = s.msgs_week + ' this week';
+    document.getElementById('statPdfs').textContent = s.total_pdfs;
+    document.getElementById('statImgs').textContent = s.total_images;
+    document.getElementById('bestDay').textContent = s.best_day !== '—' ? s.best_day + ' (' + s.best_day_count + ' msgs)' : 'No data yet';
+    document.getElementById('avgMsgs').textContent = s.avg_msgs;
+    document.getElementById('totalQ').textContent = s.user_messages;
+
+    // Show content before rendering charts so canvas sizes compute correctly
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('analyticsContent').style.display = 'block';
+
+    // Charts
+    drawLineChart('msgsChart', data.msgs_per_day, '#4285f4');
+    renderBarChart('compChart', data.top_components, '#34a853');
+    renderHourChart(data.hours_data);
+    renderTopics(data.top_topics);
+
+    // enable hover tooltip for messages chart
+    enableMsgsHover();
+
+    
+  } catch(e) {
+    document.getElementById('loadingState').innerHTML = '<p style="color:var(--red)">Failed to load analytics: '+e.message+'</p>';
+    console.error('Analytics load error:', e);
+  }
+}
+
+function enableMsgsHover(){
+  const canvas = document.getElementById('msgsChart');
+  const tooltip = document.getElementById('msgsTooltip');
+  if(!canvas || !tooltip || !window._analytics_msgs_data) return;
+  const data = window._analytics_msgs_data;
+  function redraw(highlight){ drawLineChart('msgsChart', data, '#4285f4', highlight); }
+
+  canvas.addEventListener('mousemove', (ev) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    const W = canvas.width;
+    const step = W / Math.max((data.length - 1), 1);
+    let idx = Math.round(x / step);
+    idx = Math.max(0, Math.min(data.length - 1, idx));
+    const d = data[idx];
+    tooltip.style.display = 'block';
+    tooltip.textContent = d.date + ': ' + d.count + ' msgs';
+    // position tooltip above the point
+    const left = rect.left + idx * step + window.scrollX;
+    const top = rect.top + window.scrollY;
+    tooltip.style.left = (idx * step) + 'px';
+    tooltip.style.top = '-8px';
+    // place tooltip inside container (parent is relative)
+    tooltip.style.transform = 'translate(-50%,-120%)';
+    redraw(idx);
+  });
+  canvas.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+    redraw(null);
+  });
+}
+
+window.addEventListener('load', loadAnalytics);
+</script>
+{% endblock %}

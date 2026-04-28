@@ -1,0 +1,185 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Provider Status — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.ps-hero{padding:48px 0 32px}
+.ps-hero h1{font-size:36px;font-weight:800;margin-bottom:6px}
+.ps-hero h1 span{background:linear-gradient(135deg,var(--accent),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.ps-hero p{color:var(--muted);font-size:15px}
+
+.summary-bar{
+  display:flex;align-items:center;gap:16px;padding:16px 20px;
+  background:var(--s1);border:1px solid var(--border);border-radius:14px;
+  margin-bottom:28px;flex-wrap:wrap
+}
+.summary-dot{width:10px;height:10px;border-radius:50%;animation:pulse 2s infinite}
+.summary-dot.ok{background:#2dd4bf;box-shadow:0 0 8px rgba(45,212,191,.5)}
+.summary-dot.warn{background:#f6a623;box-shadow:0 0 8px rgba(246,166,35,.5)}
+.summary-dot.err{background:#ff4d6d;box-shadow:0 0 8px rgba(255,77,109,.5)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.summary-text{font-weight:700;font-size:15px}
+.summary-sub{color:var(--muted);font-size:13px;margin-left:auto}
+.last-refresh{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+.providers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.pcard{
+  background:var(--s1);border:1px solid var(--border);border-radius:16px;
+  padding:22px 20px;transition:all .25s;position:relative;overflow:hidden
+}
+.pcard:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.pcard.status-ok{border-color:rgba(45,212,191,.25)}
+.pcard.status-limited{border-color:rgba(246,166,35,.25)}
+.pcard.status-offline{border-color:rgba(255,77,109,.15);opacity:.7}
+.pcard-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.pcard-name{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
+.status-pill{
+  display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:100px;
+  font-family:var(--mono);font-size:11px;font-weight:700
+}
+.status-pill.ok{background:rgba(45,212,191,.1);color:var(--success);border:1px solid rgba(45,212,191,.25)}
+.status-pill.limited{background:rgba(246,166,35,.1);color:var(--a3);border:1px solid rgba(246,166,35,.25)}
+.status-pill.offline{background:rgba(255,77,109,.1);color:var(--a4);border:1px solid rgba(255,77,109,.2)}
+.status-pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pcard-model{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:12px}
+.pcard-type{
+  display:inline-block;font-family:var(--mono);font-size:11px;
+  padding:3px 8px;border-radius:5px;
+  background:rgba(124,106,247,.1);border:1px solid rgba(124,106,247,.2);color:var(--accent)
+}
+.pcard-meta{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);
+  font-size:13px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.pcard-index{
+  position:absolute;top:14px;right:14px;
+  width:24px;height:24px;border-radius:6px;
+  background:var(--s2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:11px;color:var(--muted)
+}
+
+.info-box{
+  background:rgba(124,106,247,.05);border:1px solid rgba(124,106,247,.2);
+  border-radius:14px;padding:20px 22px;margin-top:32px;
+  display:flex;gap:14px;align-items:flex-start
+}
+.info-box .ico{font-size:20px;flex-shrink:0;margin-top:2px}
+.info-box h4{font-size:15px;font-weight:700;margin-bottom:5px}
+.info-box p{color:var(--muted);font-size:13px;line-height:1.65}
+
+.refresh-btn{
+  margin-left:auto;padding:8px 16px;border-radius:8px;
+  background:var(--s2);border:1px solid var(--border);
+  color:var(--muted);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:all .2s
+}
+.refresh-btn:hover{color:var(--text);border-color:var(--accent)}
+.refresh-btn.spinning svg{animation:spin .7s linear infinite}
+
+@media(max-width:600px){.providers-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="ps-hero anim-fade-up">
+    <h1>Provider <span>Status</span></h1>
+    <p>Live status of all LLM providers in the round-robin pool</p>
+  </div>
+
+  <!-- Summary bar -->
+  <div class="summary-bar anim-fade-up" id="summaryBar">
+    <div class="summary-dot ok" id="sumDot"></div>
+    <span class="summary-text" id="sumText">Checking…</span>
+    <span class="summary-sub" id="sumSub"></span>
+    <span class="last-refresh" id="lastRefresh"></span>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadStatus()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+      Refresh
+    </button>
+  </div>
+
+  <!-- Provider cards -->
+  <div class="providers-grid" id="providersGrid">
+    <div style="color:var(--muted);font-size:14px;padding:20px">Loading providers…</div>
+  </div>
+
+  <div class="info-box anim-fade-up">
+    <div class="ico">💡</div>
+    <div>
+      <h4>How the load balancer works</h4>
+      <p>VisionRAG distributes requests round-robin across all <strong>non-rate-limited</strong> cloud providers. If a provider returns HTTP 429, it's cooled off for 60 seconds before retrying. Ollama is always last in the chain — it's the unlimited local fallback and never rate-limited.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const TYPE_LABELS = {groq:'Cloud · Groq',together:'Cloud · Together AI',openrouter:'Cloud · OpenRouter',ollama:'Local · Ollama'};
+const TYPE_COLORS = {groq:'#f6a623',together:'#4fd1c5',openrouter:'#7c6af7',ollama:'#e8e8f0'};
+const TYPE_ICONS  = {groq:'⚡',together:'🌐',openrouter:'🔀',ollama:'🦙'};
+
+function loadStatus(){
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+
+  fetch('/provider-status/?json=1')
+    .then(r=>r.json())
+    .then(data=>{
+      renderProviders(data.providers);
+      updateSummary(data.providers);
+      document.getElementById('lastRefresh').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    })
+    .catch(()=>{
+      document.getElementById('providersGrid').innerHTML = '<div style="color:var(--a4);font-size:14px;padding:20px">Failed to load provider status.</div>';
+    })
+    .finally(()=>btn.classList.remove('spinning'));
+}
+
+function renderProviders(providers){
+  const grid = document.getElementById('providersGrid');
+  if(!providers || !providers.length){
+    grid.innerHTML = '<div style="color:var(--muted);padding:20px">No providers configured.</div>';
+    return;
+  }
+  grid.innerHTML = providers.map((p,i)=>{
+    const isOllama = p.type === 'ollama';
+    const statusKey = isOllama ? 'ok' : (p.rate_limited ? 'limited' : 'ok');
+    const statusLabel = isOllama ? 'Local' : (p.rate_limited ? 'Rate Limited' : 'Available');
+    const cardClass = p.rate_limited ? 'status-limited' : 'status-ok';
+    const color = TYPE_COLORS[p.type] || '#7a7a9a';
+    const icon  = TYPE_ICONS[p.type]  || '•';
+    return `
+    <div class="pcard ${cardClass} anim-fade-up" style="animation-delay:${i*0.06}s">
+      <div class="pcard-index">#${i+1}</div>
+      <div class="pcard-header">
+        <div class="pcard-name">
+          <span style="width:28px;height:28px;border-radius:7px;background:${color}22;border:1px solid ${color}44;display:flex;align-items:center;justify-content:center;font-size:13px">${icon}</span>
+          ${escHtml(p.name)}
+        </div>
+        <div class="status-pill ${statusKey}"><div class="dot"></div>${statusLabel}</div>
+      </div>
+      <div class="pcard-model">${escHtml(p.model)}</div>
+      <div class="pcard-type">${TYPE_LABELS[p.type] || p.type}</div>
+      ${p.rate_limited ? `<div class="pcard-meta"><span>⏱ Cooling off — retries in ~60s</span></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateSummary(providers){
+  if(!providers) return;
+  const limited = providers.filter(p=>p.rate_limited && p.type!=='ollama').length;
+  const total   = providers.filter(p=>p.type!=='ollama').length;
+  const available = total - limited;
+  const dot  = document.getElementById('sumDot');
+  const text = document.getElementById('sumText');
+  const sub  = document.getElementById('sumSub');
+  if(available === 0 && total > 0){
+    dot.className='summary-dot warn'; text.textContent='All cloud providers rate-limited'; sub.textContent='Using Ollama fallback';
+  } else {
+    dot.className='summary-dot ok'; text.textContent=`${available} of ${total+1} providers available`; sub.textContent=available+' cloud + Ollama';
+  }
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+loadStatus();
+setInterval(loadStatus, 30000);  // auto-refresh every 30s
+</script>
+{% endblock %}

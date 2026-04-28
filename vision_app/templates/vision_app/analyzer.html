@@ -1,0 +1,382 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Smart Analyzer — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+/* ── Page Layout ── */
+.analyzer-page{max-width:1100px;margin:0 auto;padding:2rem 2rem 4rem}
+.page-header{margin-bottom:2rem}
+.page-header h1{font-size:2rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.3rem}
+.page-header p{color:var(--muted);font-size:1rem}
+
+/* ── Upload Zone ── */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem}
+.upload-card{background:var(--s1);border:2px dashed var(--border);border-radius:16px;
+  padding:2rem;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.upload-card:hover,.upload-card.over{border-color:var(--blue);background:rgba(66,133,244,.05)}
+.upload-card.has-file{border-style:solid;border-color:var(--green);background:rgba(52,168,83,.05)}
+.upload-card input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:2.5rem;margin-bottom:.75rem;display:block}
+.upload-card h3{font-size:1.05rem;font-weight:800;margin-bottom:.3rem}
+.upload-card p{font-size:.88rem;color:var(--muted)}
+.file-chosen{font-size:.85rem;color:var(--green);font-weight:700;margin-top:.5rem;
+  display:none;align-items:center;gap:.4rem;justify-content:center}
+.file-chosen.show{display:flex}
+
+/* ── Run Button ── */
+.run-btn{width:100%;padding:1rem;font-size:1.1rem;font-weight:800;
+  background:linear-gradient(135deg,var(--blue),var(--green));
+  color:#fff;border:none;border-radius:14px;cursor:pointer;
+  transition:all .2s;margin-bottom:2rem;letter-spacing:.01em}
+.run-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 30px rgba(66,133,244,.4)}
+.run-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ── Agent Steps Progress ── */
+.agent-steps{display:flex;flex-direction:column;gap:.6rem;margin-bottom:2rem}
+.agent-step{display:flex;align-items:center;gap:.85rem;padding:.75rem 1rem;
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  font-size:.95rem;font-weight:600;transition:all .3s}
+.agent-step.running{border-color:var(--blue);background:rgba(66,133,244,.06)}
+.agent-step.done{border-color:var(--green);background:rgba(52,168,83,.06)}
+.agent-step.error{border-color:var(--red);background:rgba(234,67,53,.06)}
+.step-icon{font-size:1.2rem;width:28px;text-align:center;flex-shrink:0}
+.step-label{flex:1}
+.step-status{font-size:.8rem;color:var(--muted);font-weight:500}
+.step-spinner{width:16px;height:16px;border:2px solid var(--border);
+  border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Results Grid ── */
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.result-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;display:none}
+.result-card.visible{display:block;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.7rem;font-weight:800;font-size:1rem}
+.card-icon{font-size:1.3rem}
+.card-body{padding:1.25rem;font-size:.95rem;line-height:1.8;color:var(--text);
+  white-space:pre-wrap;min-height:80px}
+.card-body.streaming::after{content:'▊';animation:blink .7s infinite;color:var(--blue)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── Component identity card ── */
+.identity-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;
+  padding:1.5rem;margin-bottom:2rem;display:none;animation:fadeUp .4s ease}
+.identity-card.visible{display:flex;gap:1.25rem;align-items:flex-start}
+.identity-badge{background:linear-gradient(135deg,var(--blue),var(--green));
+  border-radius:12px;padding:.75rem;flex-shrink:0;text-align:center;min-width:110px;display:flex;flex-direction:column;align-items:center}
+.identity-badge .badge-icon{font-size:2rem;display:block;margin-bottom:.3rem}
+.identity-badge .badge-name{font-size:.8rem;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+.identity-info h2{font-size:1.4rem;font-weight:900;margin-bottom:.4rem}
+.identity-info p{color:var(--muted);font-size:.93rem;line-height:1.7}
+
+/* ── Empty / error states ── */
+.empty-state{text-align:center;padding:3rem;color:var(--muted)}
+.empty-state .empty-icon{font-size:3.5rem;margin-bottom:1rem;display:block}
+
+/* Colors per section */
+.card-header.specs   { background:rgba(66,133,244,.07);  color:var(--blue)  }
+.card-header.warnings{ background:rgba(234,67,53,.07);   color:var(--red)   }
+.card-header.install { background:rgba(52,168,83,.07);   color:var(--green) }
+.card-header.compat  { background:rgba(251,188,4,.07);   color:var(--yellow)}
+
+@media(max-width:800px){
+  .upload-grid{grid-template-columns:1fr}
+  .results-grid{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analyzer-page">
+
+  <div class="page-header">
+    <h1>🔍 Smart Component Analyzer</h1>
+    <p>Upload a hardware image + PDF manual. The AI agent will autonomously extract specs, warnings, installation steps, and compatibility — all in one shot.</p>
+  </div>
+
+  <!-- Upload Zone -->
+  <div class="upload-grid">
+    <div class="upload-card" id="imgCard" ondragover="this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleDrop(event,'img')">
+      <input type="file" id="imgInput" accept="image/*" onchange="fileChosen('img', this)">
+      <span class="upload-icon">📸</span>
+      <h3>Hardware Image</h3>
+      <p>JPG · PNG · WEBP · Drop or click</p>
+      <div class="file-chosen" id="imgChosen">✓ <span id="imgName"></span></div>
+    </div>
+    <div class="upload-card" id="pdfCard" ondragover="this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleDrop(event,'pdf')">
+      <input type="file" id="pdfInput" accept=".pdf" onchange="fileChosen('pdf', this)">
+      <span class="upload-icon">📄</span>
+      <h3>PDF Manual / Datasheet</h3>
+      <p>PDF only · Drop or click</p>
+      <div class="file-chosen" id="pdfChosen">✓ <span id="pdfName"></span></div>
+    </div>
+  </div>
+
+  <button class="run-btn" id="runBtn" onclick="runAnalysis()" disabled>
+    🔍 Run Smart Analysis
+  </button>
+
+  <!-- Save PDF button (disabled until results available) -->
+  <button class="run-btn" id="savePdfBtn" onclick="saveAnalyzerPdf()" disabled style="background:linear-gradient(135deg,var(--blue),#6ec36b);margin-top:.5rem">🖨️ Save PDF</button>
+
+  <!-- Agent Steps Progress -->
+  <div class="agent-steps" id="agentSteps" style="display:none">
+    <div class="agent-step" id="step-identify">
+      <span class="step-icon">🤖</span>
+      <span class="step-label">Step 1 — Identify Component (Gemini Vision)</span>
+      <span class="step-status" id="st-identify">Waiting...</span>
+    </div>
+    <div class="agent-step" id="step-pdf">
+      <span class="step-icon">📄</span>
+      <span class="step-label">Step 2 — Extract PDF Content</span>
+      <span class="step-status" id="st-pdf">Waiting...</span>
+    </div>
+    <div class="agent-step" id="step-specs">
+      <span class="step-icon">📋</span>
+      <span class="step-label">Step 3 — Extract Specifications</span>
+      <span class="step-status" id="st-specs">Waiting...</span>
+    </div>
+    <div class="agent-step" id="step-warnings">
+      <span class="step-icon">⚠️</span>
+      <span class="step-label">Step 4 — Find Warnings & Cautions</span>
+      <span class="step-status" id="st-warnings">Waiting...</span>
+    </div>
+    <div class="agent-step" id="step-installation">
+      <span class="step-icon">🔧</span>
+      <span class="step-label">Step 5 — Extract Installation Steps</span>
+      <span class="step-status" id="st-installation">Waiting...</span>
+    </div>
+    <div class="agent-step" id="step-compatibility">
+      <span class="step-icon">✅</span>
+      <span class="step-label">Step 6 — Check Compatibility Info</span>
+      <span class="step-status" id="st-compatibility">Waiting...</span>
+    </div>
+  </div>
+
+  <!-- Identified Component Card -->
+  <div class="identity-card" id="identityCard">
+    <div class="identity-badge">
+      <img id="badgeImg" src="" alt="component" style="width:80px;height:80px;object-fit:cover;border-radius:8px;display:block;margin-bottom:.4rem">
+      <span class="badge-name" id="badgeName">—</span>
+    </div>
+    <div class="identity-info">
+      <h2 id="componentName">Identifying...</h2>
+      <p id="componentDesc"></p>
+    </div>
+  </div>
+
+  <!-- Results Grid -->
+  <div class="results-grid" id="resultsGrid">
+    <div class="result-card" id="card-specs">
+      <div class="card-header specs"><span class="card-icon">📋</span> Technical Specifications</div>
+      <div class="card-body" id="body-specs"></div>
+    </div>
+    <div class="result-card" id="card-warnings">
+      <div class="card-header warnings"><span class="card-icon">⚠️</span> Warnings & Cautions</div>
+      <div class="card-body" id="body-warnings"></div>
+    </div>
+    <div class="result-card" id="card-installation">
+      <div class="card-header install"><span class="card-icon">🔧</span> Installation Steps</div>
+      <div class="card-body" id="body-installation"></div>
+    </div>
+    <div class="result-card" id="card-compatibility">
+      <div class="card-header compat"><span class="card-icon">✅</span> Compatibility</div>
+      <div class="card-body" id="body-compatibility"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let imgFile = null, pdfFile = null;
+
+function fileChosen(type, input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (type === 'img') {
+    imgFile = file;
+    document.getElementById('imgName').textContent = file.name;
+    document.getElementById('imgChosen').classList.add('show');
+    document.getElementById('imgCard').classList.add('has-file');
+    // Preview image in badge
+    const reader = new FileReader();
+    reader.onload = e => { document.getElementById('badgeImg').src = e.target.result; };
+    reader.readAsDataURL(file);
+  } else {
+    pdfFile = file;
+    document.getElementById('pdfName').textContent = file.name;
+    document.getElementById('pdfChosen').classList.add('show');
+    document.getElementById('pdfCard').classList.add('has-file');
+  }
+  checkReady();
+}
+
+function handleDrop(e, type) {
+  e.preventDefault();
+  document.getElementById(type === 'img' ? 'imgCard' : 'pdfCard').classList.remove('over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  // Simulate input change
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const input = document.getElementById(type === 'img' ? 'imgInput' : 'pdfInput');
+  input.files = dt.files;
+  fileChosen(type, input);
+}
+
+function checkReady() {
+  document.getElementById('runBtn').disabled = !(imgFile && pdfFile);
+}
+
+function setStep(id, state, msg) {
+  const el = document.getElementById('step-' + id);
+  const st = document.getElementById('st-' + id);
+  if (!el) return;
+  el.className = 'agent-step ' + state;
+
+  // Remove old spinner if any
+  const oldSpinner = el.querySelector('.step-spinner');
+  if (oldSpinner) oldSpinner.remove();
+
+  if (state === 'running') {
+    const spinner = document.createElement('div');
+    spinner.className = 'step-spinner';
+    el.appendChild(spinner);
+    st.textContent = msg || 'Running...';
+  } else if (state === 'done') {
+    st.textContent = '✓ Done';
+  } else if (state === 'error') {
+    st.textContent = '✗ Error';
+  }
+}
+
+function showCard(id) {
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.add('visible');
+}
+
+function appendToken(id, token) {
+  const body = document.getElementById('body-' + id);
+  if (!body) return;
+  body.classList.add('streaming');
+  body.textContent += token;
+}
+
+function doneCard(id) {
+  const body = document.getElementById('body-' + id);
+  if (body) body.classList.remove('streaming');
+}
+
+function resetUI() {
+  ['specs','warnings','installation','compatibility'].forEach(id => {
+    const card = document.getElementById('card-' + id);
+    const body = document.getElementById('body-' + id);
+    if (card) card.classList.remove('visible');
+    if (body) { body.textContent = ''; body.classList.remove('streaming'); }
+  });
+  ['identify','pdf','specs','warnings','installation','compatibility'].forEach(id => {
+    setStep(id, '', 'Waiting...');
+  });
+  document.getElementById('identityCard').classList.remove('visible');
+  document.getElementById('agentSteps').style.display = 'none';
+  // disable save while no results
+  try { document.getElementById('savePdfBtn').disabled = true; } catch(e){}
+}
+
+/* PRINT PDF */
+function openPrintWindow(contentHtml, title){
+  const win = window.open('', '_blank');
+  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).map(el=>el.outerHTML).join('\n');
+  const head = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>${styles}
+    <style>body{background:#fff;color:#111;padding:20px;font-family:Arial, Helvetica, sans-serif} .page-header h1{color:#111}</style></head><body>`;
+  win.document.write(head + contentHtml + '</body></html>');
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ win.print(); }, 700);
+}
+
+function saveAnalyzerPdf(){
+  // Collect the visible parts: header, steps, identity card, results grid
+  const header = document.querySelector('.page-header') ? document.querySelector('.page-header').outerHTML : '';
+  const steps  = document.getElementById('agentSteps') ? document.getElementById('agentSteps').outerHTML : '';
+  const identity = document.getElementById('identityCard') ? document.getElementById('identityCard').outerHTML : '';
+  const results = document.getElementById('resultsGrid') ? document.getElementById('resultsGrid').outerHTML : '';
+  const content = `<div class="page">${header}${steps}${identity}${results}</div>`;
+  openPrintWindow(content, 'Smart Analyzer Report');
+}
+
+async function runAnalysis() {
+  if (!imgFile || !pdfFile) return;
+
+  resetUI();
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('agentSteps').style.display = 'flex';
+
+  const fd = new FormData();
+  fd.append('image', imgFile);
+  fd.append('pdf', pdfFile);
+
+  const resp = await fetch('/analyzer/run/', { method: 'POST', body: fd });
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (!raw) continue;
+      let evt;
+      try { evt = JSON.parse(raw); } catch { continue; }
+
+      const { step, status, msg, component, description, token } = evt;
+
+      if (step === 'identify') {
+        if (status === 'running') setStep('identify', 'running', msg);
+        if (status === 'done') {
+          setStep('identify', 'done');
+          document.getElementById('componentName').textContent = component;
+          document.getElementById('componentDesc').textContent = description;
+          document.getElementById('badgeName').textContent = component;
+          document.getElementById('identityCard').classList.add('visible');
+        }
+        if (status === 'error') setStep('identify', 'error', msg);
+      }
+
+      else if (step === 'pdf') {
+        if (status === 'running') setStep('pdf', 'running', msg);
+        if (status === 'done')    setStep('pdf', 'done');
+        if (status === 'error')   setStep('pdf', 'error', msg);
+      }
+
+      else if (['specs','warnings','installation','compatibility'].includes(step)) {
+        if (status === 'running') { setStep(step, 'running', msg); showCard(step); }
+        if (status === 'token')   appendToken(step, token);
+        if (status === 'done')    { setStep(step, 'done'); doneCard(step); }
+        if (status === 'error')   { setStep(step, 'error', msg); doneCard(step); }
+      }
+
+      else if (step === 'done') {
+        document.getElementById('runBtn').disabled = false;
+        // enable Save PDF when analysis completes
+        try { document.getElementById('savePdfBtn').disabled = false; } catch(e){}
+      }
+
+      else if (step === 'error') {
+        alert('Analysis failed: ' + (msg || 'Unknown error'));
+        document.getElementById('runBtn').disabled = false;
+      }
+    }
+  }
+
+  document.getElementById('runBtn').disabled = false;
+}
+</script>
+{% endblock %}

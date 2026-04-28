@@ -1,0 +1,355 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Profile — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+/* ── LIGHT THEME OVERRIDES ─────────────────────────── */
+body.light{
+  --bg:#f0f2f8;--s1:#ffffff;--s2:#e8eaf4;--border:#d0d4e8;--border2:#c4c8e0;
+  --text:#1a1d2e;--muted:#5a6080;
+}
+/* Keep navbar dark even in light theme (override any pre-paint rules) */
+body.light nav,
+html.light-pre body.light nav,
+html.light-pre nav{
+  background:#07080f !important;
+}
+body.light #toast{background:var(--s1)}
+body.light .form-input{background:var(--s2);color:var(--text)}
+
+/* ── HEADER ─────────────────────────────────────────── */
+.pg-header{padding:48px 0 28px}
+.pg-header h1{font-size:48px;font-weight:900;margin-bottom:8px;letter-spacing:-.03em}
+.pg-header p{color:var(--muted);font-size:1.15rem}
+
+/* ── GRID ─────────────────────────────────────────── */
+.profile-grid{display:grid;grid-template-columns:320px 1fr;gap:28px;margin-top:8px}
+
+/* ── LEFT CARD ─────────────────────────────────────── */
+.profile-left .card{padding:32px 28px;text-align:center}
+.av-wrap-big{position:relative;width:120px;height:120px;margin:0 auto 20px}
+.av-ring-big{position:absolute;inset:-3px;border-radius:50%;
+  background:conic-gradient(var(--blue),var(--green),var(--yellow),var(--red),var(--blue));
+  animation:spin-ring 4s linear infinite}
+@keyframes spin-ring{to{transform:rotate(360deg)}}
+.av-circle{position:relative;width:100%;height:100%;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:46px;font-weight:900;color:#fff;
+  border:3px solid var(--bg);z-index:1;
+  transition:background .3s;user-select:none}
+
+.uname{font-size:1.5rem;font-weight:800;margin-bottom:6px}
+.uemail{font-size:1rem;color:var(--muted);font-family:var(--mono);word-break:break-all;line-height:1.5}
+
+/* Color picker */
+.color-lbl{font-family:var(--mono);font-size:.8rem;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;margin:20px 0 10px}
+.cp-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.cp{width:32px;height:32px;border-radius:50%;cursor:pointer;
+  border:3px solid transparent;transition:all .2s;flex-shrink:0}
+.cp:hover{transform:scale(1.2);border-color:rgba(255,255,255,.5)}
+.cp.sel{border-color:#fff;transform:scale(1.25);box-shadow:0 0 10px rgba(255,255,255,.4)}
+
+/* Mini stats */
+.mini-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}
+.mini-stat{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:16px 12px}
+.mini-num{font-size:2rem;font-weight:900;
+  background:linear-gradient(135deg,var(--blue),var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.mini-lbl{font-family:var(--mono);font-size:.78rem;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.joined{font-family:var(--mono);font-size:.88rem;color:var(--muted);margin-top:16px}
+
+/* ── THEME TOGGLE ───────────────────────────────────── */
+.theme-section{margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+.theme-lbl{font-family:var(--mono);font-size:.8rem;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.theme-toggle{
+  display:flex;background:var(--s2);border:1px solid var(--border);
+  border-radius:12px;padding:5px;gap:5px
+}
+.theme-btn{
+  flex:1;padding:12px 8px;border-radius:9px;border:none;cursor:pointer;
+  font-family:var(--sans);font-size:1rem;font-weight:700;color:var(--muted);
+  background:transparent;transition:all .25s;display:flex;align-items:center;
+  justify-content:center;gap:8px
+}
+.theme-btn.active{
+  background:var(--s1);color:var(--text);
+  box-shadow:0 2px 10px rgba(0,0,0,.25);
+  border:1px solid var(--border2)
+}
+.theme-btn.dark-btn.active{color:var(--blue)}
+.theme-btn.light-btn.active{color:var(--yellow)}
+
+/* ── RECENT SESSIONS ──────────────────────────────── */
+.rs-item{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;background:var(--s2);border:1px solid var(--border);
+  border-radius:12px;margin-bottom:10px;text-decoration:none;color:var(--text);
+  transition:all .2s;gap:12px}
+.rs-item:hover{border-color:rgba(66,133,244,.4);transform:translateX(3px)}
+.rs-title{font-size:1rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.rs-time{font-family:var(--mono);font-size:.82rem;color:var(--muted);white-space:nowrap}
+
+/* ── RIGHT FORM ───────────────────────────────────── */
+.form-section{background:var(--s1);border:1px solid var(--border);
+  border-radius:18px;padding:28px;margin-bottom:20px}
+.form-section h3{font-size:1.25rem;font-weight:800;margin-bottom:22px;
+  padding-bottom:14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+/* Larger form elements */
+.form-label{font-size:.85rem!important}
+.form-input{font-size:1.05rem!important;padding:1rem 1.2rem!important}
+
+.pw-hint{font-size:.95rem;color:var(--muted);margin-top:12px;
+  background:var(--s2);border-radius:10px;padding:12px 16px;border:1px solid var(--border)}
+
+/* Save bar */
+.save-bar{display:flex;align-items:center;gap:18px;padding:22px 0 8px}
+.save-bar .btn{font-size:1.05rem;padding:1rem 2.4rem}
+
+@media(max-width:900px){
+  .profile-grid{grid-template-columns:1fr}
+  .pg-header h1{font-size:36px}
+  .grid-2{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div class="pg-header anim-fade-up">
+    <h1>Profile & Settings</h1>
+    <p>Manage your account, appearance, and preferences</p>
+  </div>
+
+  {% if success %}
+  <div class="alert alert-success anim-fade-up">✓ {{ success }}</div>
+  {% endif %}
+
+  <div class="profile-grid">
+
+    <!-- ══ LEFT PANEL ═══════════════════════════════ -->
+    <div class="profile-left">
+
+      <!-- Avatar + stats card -->
+      <div class="card anim-fade-up-1">
+        <div class="av-wrap-big">
+          <div class="av-ring-big"></div>
+          <div class="av-circle" id="bigAv" style="background:{{ profile.avatar_color }}">
+            {{ user.username|first|upper }}
+          </div>
+        </div>
+
+        <div class="uname">{{ user.username }}</div>
+        <div class="uemail">{{ user.email|default:"No email set" }}</div>
+
+        <div class="color-lbl">Avatar Colour</div>
+        <div class="cp-row" id="cpRow">
+          <div class="cp" style="background:#4285f4" data-color="#4285f4" onclick="pick('#4285f4')"></div>
+          <div class="cp" style="background:#34a853" data-color="#34a853" onclick="pick('#34a853')"></div>
+          <div class="cp" style="background:#fbbc04" data-color="#fbbc04" onclick="pick('#fbbc04')"></div>
+          <div class="cp" style="background:#ea4335" data-color="#ea4335" onclick="pick('#ea4335')"></div>
+          <div class="cp" style="background:#7c6af7" data-color="#7c6af7" onclick="pick('#7c6af7')"></div>
+          <div class="cp" style="background:#4fd1c5" data-color="#4fd1c5" onclick="pick('#4fd1c5')"></div>
+          <div class="cp" style="background:#f6a623" data-color="#f6a623" onclick="pick('#f6a623')"></div>
+          <div class="cp" style="background:#ff4d6d" data-color="#ff4d6d" onclick="pick('#ff4d6d')"></div>
+          <div class="cp" style="background:#68d391" data-color="#68d391" onclick="pick('#68d391')"></div>
+          <div class="cp" style="background:#e53e3e" data-color="#e53e3e" onclick="pick('#e53e3e')"></div>
+        </div>
+
+        <div class="mini-stats">
+          <div class="mini-stat">
+            <div class="mini-num" data-target="{{ total_sessions }}">0</div>
+            <div class="mini-lbl">Sessions</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-num" data-target="{{ total_queries }}">0</div>
+            <div class="mini-lbl">Queries</div>
+          </div>
+        </div>
+
+        <div class="joined">Joined {{ user.date_joined|date:"F Y" }}</div>
+
+        <!-- ══ THEME TOGGLE ══════════════════════════ -->
+        <div class="theme-section">
+          <div class="theme-lbl">🎨 App Theme</div>
+          <div class="theme-toggle">
+            <button class="theme-btn dark-btn" id="darkBtn" onclick="setTheme('dark')">
+              🌙 Dark
+            </button>
+            <button class="theme-btn light-btn" id="lightBtn" onclick="setTheme('light')">
+              ☀️ Light
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent sessions -->
+      {% if recent_sessions %}
+      <div class="card anim-fade-up-2" style="padding:24px;margin-top:20px">
+        <div style="font-size:1.1rem;font-weight:800;margin-bottom:16px">Recent Sessions</div>
+        {% for s in recent_sessions %}
+        <a href="/app/?session={{ s.session_id }}" class="rs-item">
+          <span class="rs-title">{{ s.title }}</span>
+          <span class="rs-time">{{ s.updated_at|timesince|truncatewords:2 }} ago</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- ══ RIGHT PANEL ══════════════════════════════ -->
+    <div>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="avatar_color" id="colorInput" value="{{ profile.avatar_color }}">
+
+        <!-- Personal info -->
+        <div class="form-section anim-fade-up-1">
+          <h3>👤 Personal Information</h3>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">First Name</label>
+              <input class="form-input {% if errors.first_name %}error{% endif %}"
+                     type="text" name="first_name"
+                     value="{{ user.first_name }}" placeholder="First name">
+              {% if errors.first_name %}<div class="field-error">⚠ {{ errors.first_name }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last Name</label>
+              <input class="form-input {% if errors.last_name %}error{% endif %}"
+                     type="text" name="last_name"
+                     value="{{ user.last_name }}" placeholder="Last name">
+              {% if errors.last_name %}<div class="field-error">⚠ {{ errors.last_name }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input class="form-input {% if errors.email %}error{% endif %}"
+                   type="email" name="email"
+                   value="{{ user.email }}" placeholder="you@gmail.com"
+                   oninput="liveEmail(this)">
+            {% if errors.email %}<div class="field-error">⚠ {{ errors.email }}</div>{% endif %}
+            <div class="field-error" id="emailErr" style="display:none"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Bio</label>
+            <textarea class="form-input" name="bio" rows="3"
+                      placeholder="Hardware engineer, IT technician...">{{ profile.bio }}</textarea>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="form-section anim-fade-up-2">
+          <h3>🔒 Change Password
+            <span style="font-size:.95rem;color:var(--muted);font-weight:500">(leave blank to keep current)</span>
+          </h3>
+          <div class="grid-2">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">New Password</label>
+              <div style="position:relative"><input class="form-input {% if errors.new_password %}error{% endif %}" id="profPw1" type="password" name="new_password"
+                     placeholder="min 8 characters" autocomplete="new-password"
+                     oninput="livePw(this)">
+              {% if errors.new_password %}<div class="field-error">⚠ {{ errors.new_password }}</div>{% endif %}
+              <div class="field-error" id="pwErr" style="display:none"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Confirm Password</label>
+              <div style="position:relative"><input class="form-input {% if errors.confirm_password %}error{% endif %}" id="profPw2"
+                     type="password" name="confirm_password"
+                     placeholder="repeat new password" autocomplete="new-password"
+                     oninput="livePw2(this)">
+              {% if errors.confirm_password %}<div class="field-error">⚠ {{ errors.confirm_password }}</div>{% endif %}
+              <div class="field-error" id="pw2Err" style="display:none"></div>
+            </div>
+          </div>
+          <div class="pw-hint">🔒 Minimum 8 characters · at least one letter · at least one number</div>
+        </div>
+
+        <!-- Save -->
+        <div class="save-bar anim-fade-up-3">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <a href="{% url 'dashboard' %}" class="btn btn-ghost">Cancel</a>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ── AVATAR COLOUR PICKER ── */
+const CUR = '{{ profile.avatar_color }}';
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.cp').forEach(el => {
+    if (el.dataset.color === CUR) el.classList.add('sel');
+  });
+  document.querySelectorAll('.mini-num[data-target]').forEach(el => {
+    const t = parseInt(el.dataset.target) || 0;
+    if (!t) return;
+    let c = 0; const s = Math.ceil(t / 25);
+    const i = setInterval(() => { c = Math.min(c + s, t); el.textContent = c; if (c >= t) clearInterval(i); }, 40);
+  });
+  // Apply saved theme on load
+  applyTheme(localStorage.getItem('vr-theme') || 'dark');
+});
+
+function pick(c) {
+  document.getElementById('bigAv').style.background = c;
+  document.getElementById('colorInput').value = c;
+  document.querySelectorAll('.cp').forEach(el => el.classList.toggle('sel', el.dataset.color === c));
+}
+
+/* ── THEME TOGGLE ── */
+function setTheme(t) {
+  localStorage.setItem('vr-theme', t);
+  applyTheme(t);
+}
+
+function applyTheme(t) {
+  document.body.classList.toggle('light', t === 'light');
+  document.getElementById('darkBtn').classList.toggle('active', t === 'dark');
+  document.getElementById('lightBtn').classList.toggle('active', t === 'light');
+}
+
+/* ── LIVE VALIDATION ── */
+function liveEmail(el) {
+  const err = document.getElementById('emailErr');
+  if (!el.value) { el.classList.remove('error', 'success-border'); err.style.display = 'none'; return; }
+  if (!/^[^@]+@[^@]+\.[a-zA-Z]{2,}$/.test(el.value)) {
+    el.classList.add('error'); err.textContent = '⚠ Enter a valid email'; err.style.display = 'flex';
+  } else { el.classList.remove('error'); err.style.display = 'none'; }
+}
+function livePw(el) {
+  const err = document.getElementById('pwErr');
+  if (!el.value) { el.classList.remove('error'); err.style.display = 'none'; return; }
+  if (el.value.length < 8)        { showE(el, err, 'At least 8 characters'); }
+  else if (!/[A-Za-z]/.test(el.value)) { showE(el, err, 'Must include a letter'); }
+  else if (!/[0-9]/.test(el.value))    { showE(el, err, 'Must include a number'); }
+  else { el.classList.remove('error'); err.style.display = 'none'; }
+}
+function livePw2(el) {
+  const pw  = document.querySelector('[name="new_password"]').value;
+  const err = document.getElementById('pw2Err');
+  if (!el.value) { el.classList.remove('error'); err.style.display = 'none'; return; }
+  if (el.value !== pw) { showE(el, err, 'Passwords do not match'); }
+  else { el.classList.remove('error'); err.style.display = 'none'; }
+}
+function showE(el, err, msg) {
+  el.classList.add('error'); err.textContent = '⚠ ' + msg; err.style.display = 'flex';
+}
+
+function togglePw(inputId, btn){
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  if(inp.type === 'password'){ inp.type='text'; btn.textContent='🙈'; }
+  else { inp.type='password'; btn.textContent='👁'; }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,280 @@
+{% extends 'vision_app/base.html' %}
+{% block title %}Voice Bot — VisionRAG{% endblock %}
+{% block extra_css %}
+<style>
+.vb-page{max-width:780px;margin:0 auto;padding:2rem 2rem 4rem}
+.page-header{margin-bottom:2rem;text-align:center}
+.page-header h1{font-size:2rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.3rem}
+.page-header p{color:var(--muted);font-size:1rem}
+
+/* ── Mic Button ── */
+.mic-wrap{display:flex;flex-direction:column;align-items:center;gap:1rem;margin:2rem 0}
+.big-mic{width:100px;height:100px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--blue),var(--green));
+  font-size:2.5rem;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;box-shadow:0 4px 24px rgba(66,133,244,.3)}
+.big-mic:hover{transform:scale(1.06);box-shadow:0 8px 32px rgba(66,133,244,.45)}
+.big-mic.listening{background:linear-gradient(135deg,var(--red),#ff6b35);
+  animation:pulse 1s ease-in-out infinite;box-shadow:0 0 0 0 rgba(234,67,53,.4)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(234,67,53,.5)}70%{box-shadow:0 0 0 20px rgba(234,67,53,0)}100%{box-shadow:0 0 0 0 rgba(234,67,53,0)}}
+.big-mic.speaking{background:linear-gradient(135deg,var(--green),#00c853);
+  animation:pulse2 1.2s ease-in-out infinite}
+@keyframes pulse2{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.mic-status{font-size:.95rem;color:var(--muted);font-weight:600;min-height:1.5rem}
+.mic-hint{font-size:.85rem;color:var(--muted)}
+
+/* ── Component Chip ── */
+.comp-row{display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem;
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:.75rem 1rem}
+.comp-row label{font-size:.88rem;color:var(--muted);font-weight:600;white-space:nowrap}
+.comp-input{flex:1;background:transparent;border:none;outline:none;font-size:.95rem;
+  color:var(--text);font-family:var(--sans)}
+.comp-input::placeholder{color:var(--muted)}
+
+/* ── Transcript ── */
+.transcript{margin-top:1.5rem}
+.transcript h3{font-size:1rem;font-weight:800;margin-bottom:.85rem;color:var(--muted)}
+.conv{display:flex;flex-direction:column;gap:.85rem;max-height:420px;overflow-y:auto;padding-right:4px}
+.conv-msg{padding:.85rem 1rem;border-radius:12px;font-size:.95rem;line-height:1.7;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.conv-msg.user{background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.2);
+  align-self:flex-end;max-width:85%;text-align:right}
+.conv-msg.bot{background:var(--s1);border:1px solid var(--border);max-width:90%}
+.conv-msg .role{font-size:.75rem;font-weight:800;margin-bottom:.25rem;opacity:.6;text-transform:uppercase}
+.conv-msg.bot .role{color:var(--green)}
+.conv-msg.user .role{color:var(--blue)}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--green);
+  display:inline-block;margin:0 2px;animation:bounce .9s infinite}
+.typing-dots span:nth-child(2){animation-delay:.15s}
+.typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+
+.clear-btn{margin-top:1rem;font-size:.85rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0}
+.clear-btn:hover{color:var(--red)}
+
+/* ── Spoken text preview ── */
+.spoken-preview{background:var(--s2);border:1px solid var(--border);border-radius:10px;
+  padding:.7rem 1rem;margin-bottom:1rem;font-size:.92rem;color:var(--muted);
+  min-height:2.5rem;font-style:italic;display:none}
+.spoken-preview.show{display:block}
+</style>
+{% endblock %}
+{% block content %}
+<div class="vb-page">
+  <div class="page-header">
+    <h1>🗣️ Hardware Voice Bot</h1>
+    <p>Hands-free hardware assistant. Press the mic, ask your question — the AI thinks and speaks the answer back.</p>
+  </div>
+
+  <!-- Optional component context -->
+  <div class="comp-row">
+    <label>Working with:</label>
+    <input class="comp-input" id="componentCtx" placeholder="e.g. GPU, SSD, RAM (optional)">
+  </div>
+
+  <!-- Mic button -->
+  <div class="mic-wrap">
+    <button class="big-mic" id="micBtn" onclick="toggleMic()">🎤</button>
+    <div class="mic-status" id="micStatus">Press mic to ask a question</div>
+    <div class="mic-hint">Chrome / Edge recommended for best voice support</div>
+  </div>
+
+  <!-- What was heard -->
+  <div class="spoken-preview" id="spokenPreview"></div>
+
+  <!-- Conversation -->
+  <div class="transcript" id="transcriptArea" style="display:none">
+    <h3>Conversation</h3>
+    <div class="conv" id="conv"></div>
+    <button class="clear-btn" onclick="clearConv()">✕ Clear conversation</button>
+  </div>
+
+  <!-- Save PDF conversation -->
+  <div style="text-align:center;margin-top:1rem">
+    <button class="run-btn" id="vbSavePdf" onclick="saveVoicePdf()" disabled style="background:linear-gradient(135deg,var(--blue),#6ec36b);">🖨️ Save PDF</button>
+  </div>
+</div>
+
+<script>
+let recognition = null;
+let isListening = false;
+let isSpeaking  = false;
+let history     = [];
+let currentBotEl = null;
+let currentBotText = '';
+
+// ── Speech Recognition Setup ──────────────────────────────────────────────
+function initSpeech(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ setStatus('⚠️ Speech recognition not supported — use Chrome or Edge'); return null; }
+  const r = new SR();
+  r.continuous = false;
+  r.interimResults = true;
+  r.lang = 'en-US';
+
+  r.onstart = () => {
+    isListening = true;
+    setStatus('🎤 Listening... speak your question');
+    document.getElementById('micBtn').className = 'big-mic listening';
+    document.getElementById('micBtn').textContent = '⏹️';
+  };
+  r.onresult = (e) => {
+    let interim = '', final = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      if(e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    const preview = document.getElementById('spokenPreview');
+    preview.textContent = '"' + (final || interim) + '"';
+    preview.classList.add('show');
+  };
+  r.onend = () => {
+    isListening = false;
+    document.getElementById('micBtn').className = 'big-mic';
+    document.getElementById('micBtn').textContent = '🎤';
+    const preview = document.getElementById('spokenPreview');
+    const text = preview.textContent.replace(/^"|"$/g,'').trim();
+    if(text) askQuestion(text);
+    else setStatus('Press mic to ask a question');
+  };
+  r.onerror = (e) => {
+    isListening = false;
+    document.getElementById('micBtn').className = 'big-mic';
+    document.getElementById('micBtn').textContent = '🎤';
+    setStatus('Error: ' + e.error + '. Try again.');
+  };
+  return r;
+}
+
+function toggleMic(){
+  if(isSpeaking){ window.speechSynthesis.cancel(); isSpeaking=false; }
+  if(isListening){ recognition && recognition.stop(); return; }
+  if(!recognition) recognition = initSpeech();
+  if(!recognition) return;
+  document.getElementById('spokenPreview').classList.remove('show');
+  recognition.start();
+}
+
+function setStatus(msg){ document.getElementById('micStatus').textContent = msg; }
+
+// ── Ask Question ──────────────────────────────────────────────────────────
+async function askQuestion(text){
+  setStatus('🧠 AI is thinking...');
+  document.getElementById('transcriptArea').style.display = 'block';
+
+  addMsg('user', text);
+  history.push({role:'user', content:text});
+
+  currentBotEl   = addMsg('bot', '');
+  currentBotText = '';
+  const dotsEl = document.createElement('div');
+  dotsEl.className = 'typing-dots';
+  dotsEl.innerHTML = '<span></span><span></span><span></span>';
+  currentBotEl.querySelector('.msg-text').appendChild(dotsEl);
+
+  const component = document.getElementById('componentCtx').value.trim();
+
+  try {
+    const resp = await fetch('/voice-bot/ask/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question:text, history:history.slice(-6), component})
+    });
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', dotsRemoved = false;
+
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value, {stream:true});
+      const lines = buf.split('\n'); buf = lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue;
+        let evt; try{ evt=JSON.parse(line.slice(6)); }catch{ continue; }
+        if(evt.token){
+          if(!dotsRemoved){ dotsEl.remove(); dotsRemoved=true; }
+          currentBotText += evt.token;
+          currentBotEl.querySelector('.msg-text').textContent = currentBotText;
+          scrollConv();
+        }
+        if(evt.done){
+          history.push({role:'assistant', content:currentBotText});
+          speakText(currentBotText);
+          setStatus('Press mic to ask another question');
+        }
+        if(evt.error){ dotsEl.remove(); setStatus('Error: ' + evt.error); }
+      }
+    }
+  } catch(e){
+    dotsEl.remove();
+    setStatus('Failed to get answer: ' + e);
+  }
+}
+
+// ── Text to Speech ────────────────────────────────────────────────────────
+function speakText(text){
+  if(!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  // Extract just the Final Answer part if present
+  let toSpeak = text;
+  if(text.includes('Final Answer:')){
+    toSpeak = text.split('Final Answer:').pop().trim();
+  }
+  // Keep it concise for speech — first 400 chars
+  toSpeak = toSpeak.slice(0, 400);
+
+  const utt = new SpeechSynthesisUtterance(toSpeak);
+  utt.rate  = 0.95;
+  utt.pitch = 1.0;
+  utt.lang  = 'en-US';
+
+  utt.onstart = () => {
+    isSpeaking = true;
+    setStatus('🔊 Speaking... (click mic to stop)');
+    document.getElementById('micBtn').className = 'big-mic speaking';
+    document.getElementById('micBtn').textContent = '🔊';
+  };
+  utt.onend = () => {
+    isSpeaking = false;
+    setStatus('Press mic to ask another question');
+    document.getElementById('micBtn').className = 'big-mic';
+    document.getElementById('micBtn').textContent = '🎤';
+  };
+  window.speechSynthesis.speak(utt);
+}
+
+// ── UI Helpers ────────────────────────────────────────────────────────────
+function addMsg(role, text){
+  const conv = document.getElementById('conv');
+  const div  = document.createElement('div');
+  div.className = 'conv-msg ' + role;
+  div.innerHTML = `<div class="role">${role === 'user' ? 'You' : '🤖 AI'}</div><div class="msg-text">${text}</div>`;
+  conv.appendChild(div);
+  scrollConv();
+  try{ document.getElementById('vbSavePdf').disabled = false; } catch(e){}
+  return div;
+}
+function scrollConv(){ const c=document.getElementById('conv'); c.scrollTop=c.scrollHeight; }
+function clearConv(){
+  history = [];
+  document.getElementById('conv').innerHTML = '';
+  document.getElementById('transcriptArea').style.display = 'none';
+  document.getElementById('spokenPreview').classList.remove('show');
+  setStatus('Press mic to ask a question');
+  try{ document.getElementById('vbSavePdf').disabled = true; } catch(e){}
+}
+
+function saveVoicePdf(){
+  const header = document.querySelector('.page-header') ? document.querySelector('.page-header').outerHTML : '';
+  const comp = document.querySelector('.comp-row') ? document.querySelector('.comp-row').outerHTML : '';
+  const conv = document.getElementById('conv') ? document.getElementById('conv').outerHTML : '';
+  const content = `<div class="page">${header}${comp}<h3>Conversation</h3><div>${conv}</div></div>`;
+  const win = window.open('', '_blank');
+  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).map(el=>el.outerHTML).join('\n');
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Voice Conversation</title>${styles}</head><body>`+content+'</body></html>');
+  win.document.close(); win.focus(); setTimeout(()=>win.print(),500);
+}
+</script>
+{% endblock %}
