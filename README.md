@@ -1,4 +1,4 @@
-# VisionRAG — Django Multimodal Intelligence System
+# VisionRAG — AI System for Visual Understanding 
 
 A Django-based web app that:
 - Accepts images via drag & drop, click, or paste (any format)
